@@ -1,5 +1,6 @@
 package com.malaclord.clientcommands.client;
 
+import com.malaclord.clientcommands.client.command.ClientEnchantCommand;
 import com.malaclord.clientcommands.client.command.ClientGiveCommand;
 import com.malaclord.clientcommands.client.command.ClientRenameCommand;
 import net.fabricmc.api.ClientModInitializer;
@@ -22,6 +23,7 @@ public class ClientCommandsClient implements ClientModInitializer {
 
             ClientGiveCommand.register(dispatcher,registryAccess);
             ClientRenameCommand.register(dispatcher);
+            ClientEnchantCommand.register(dispatcher,registryAccess);
 
         }));
     }

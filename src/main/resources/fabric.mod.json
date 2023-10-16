@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "id": "clientcommands",
+  "version": "${version}",
+  "name": "ClientCommands",
+  "description": "",
+  "authors": [],
+  "contact": {
+    "repo": "https://github.com/Malaclord/ClientCommands"
+  },
+  "license": "MIT",
+  "icon": "assets/clientcommands/icon.png",
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      "com.malaclord.clientcommands.client.ClientCommandsClient"
+    ],
+    "main": [
+      "com.malaclord.clientcommands.ClientCommands"
+    ]
+  },
+  "mixins": [
+    "clientcommands.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=${loader_version}",
+    "fabric": "*",
+    "minecraft": ">=${minecraft_version}"
+  }
+}

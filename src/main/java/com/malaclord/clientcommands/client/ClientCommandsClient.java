@@ -1,6 +1,9 @@
 package com.malaclord.clientcommands.client;
 
+import com.google.gson.stream.JsonReader;
+import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
+import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import net.fabricmc.api.ClientModInitializer;
@@ -10,8 +13,11 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.command.CommandRegistryAccess;
 import net.minecraft.command.argument.ItemStackArgument;
 import net.minecraft.command.argument.ItemStackArgumentType;
+import net.minecraft.command.argument.TextArgumentType;
 import net.minecraft.item.ItemStack;
 import net.minecraft.server.command.ServerCommandSource;
+import net.minecraft.text.Style;
+import net.minecraft.text.Text;
 import net.minecraft.world.GameMode;
 
 import java.util.Objects;
@@ -31,16 +37,27 @@ public class ClientCommandsClient implements ClientModInitializer {
         ClientCommandRegistrationCallback.EVENT.register(((dispatcher, registryAccess) -> {
             LiteralArgumentBuilder argumentBuilder =
             literal("client")
+                .then(literal("rename").then(literal("json").then(argument("name", TextArgumentType.text()).executes((context -> {
+                    ItemStack itemStack = MinecraftClient.getInstance().player.getMainHandStack().setCustomName(TextArgumentType.getTextArgument(context,"name"));
+
+                    return 0;
+                })))).then(argument("name",StringArgumentType.string()).executes((context -> {
+                    ItemStack itemStack = MinecraftClient.getInstance().player.getMainHandStack().setCustomName(
+                            Text.of(StringArgumentType.getString(context,"name")));
+
+                    return 0;
+                })).then(argument("italic", BoolArgumentType.bool()).executes((context -> {
+                    ItemStack itemStack = MinecraftClient.getInstance().player.getMainHandStack().setCustomName(
+                            Text.literal(StringArgumentType.getString(context,"name"))
+                                    .setStyle(Style.EMPTY.withItalic(BoolArgumentType.getBool(context,"italic"))));
+
+                    return 0;
+                })))))
                 .then(literal("give")
                         .then(argument("item", ItemStackArgumentType.itemStack(registryAccess))
                                 .then(argument("amount", IntegerArgumentType.integer(0))
-                                .executes(context -> {
-                                    return giveCommand(context);
-                                })
-
-                        )).then(argument("item", ItemStackArgumentType.itemStack(registryAccess)).executes(context -> {
-                            return giveCommand(context);
-                        })));
+                                        .executes(this::giveCommand)
+                                )).then(argument("item", ItemStackArgumentType.itemStack(registryAccess)).executes(this::giveCommand)));
 
         dispatcher.register(argumentBuilder);
 

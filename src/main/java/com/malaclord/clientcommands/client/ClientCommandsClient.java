@@ -10,11 +10,16 @@ import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.gui.screen.ingame.InventoryScreen;
 import net.minecraft.command.CommandRegistryAccess;
 import net.minecraft.command.argument.ItemStackArgument;
 import net.minecraft.command.argument.ItemStackArgumentType;
 import net.minecraft.command.argument.TextArgumentType;
+import net.minecraft.datafixer.fix.OminousBannerBlockEntityRenameFix;
 import net.minecraft.item.ItemStack;
+import net.minecraft.network.packet.c2s.play.*;
+import net.minecraft.network.packet.s2c.play.InventoryS2CPacket;
+import net.minecraft.screen.slot.SlotActionType;
 import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.text.Style;
 import net.minecraft.text.Text;
@@ -40,16 +45,22 @@ public class ClientCommandsClient implements ClientModInitializer {
                 .then(literal("rename").then(literal("json").then(argument("name", TextArgumentType.text()).executes((context -> {
                     ItemStack itemStack = MinecraftClient.getInstance().player.getMainHandStack().setCustomName(TextArgumentType.getTextArgument(context,"name"));
 
+                    syncInventory();
+
                     return 0;
                 })))).then(argument("name",StringArgumentType.string()).executes((context -> {
                     ItemStack itemStack = MinecraftClient.getInstance().player.getMainHandStack().setCustomName(
                             Text.of(StringArgumentType.getString(context,"name")));
+
+                    syncInventory();
 
                     return 0;
                 })).then(argument("italic", BoolArgumentType.bool()).executes((context -> {
                     ItemStack itemStack = MinecraftClient.getInstance().player.getMainHandStack().setCustomName(
                             Text.literal(StringArgumentType.getString(context,"name"))
                                     .setStyle(Style.EMPTY.withItalic(BoolArgumentType.getBool(context,"italic"))));
+
+                    syncInventory();
 
                     return 0;
                 })))))
@@ -88,6 +99,15 @@ public class ClientCommandsClient implements ClientModInitializer {
         // Give item to player.
         MinecraftClient.getInstance().player.giveItemStack(itemStack);
 
+        syncInventory();
+
         return 1;
+    }
+
+    // Bit hacky but works.
+    private void syncInventory() {
+        if (MinecraftClient.getInstance().player == null) return;
+        MinecraftClient.getInstance().setScreen(new InventoryScreen(MinecraftClient.getInstance().player));
+        MinecraftClient.getInstance().setScreen(null);
     }
 }

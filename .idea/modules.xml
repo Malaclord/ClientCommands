@@ -2,8 +2,11 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/ClientCommands.iml" filepath="$PROJECT_DIR$/.idea/modules/ClientCommands.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/ClientCommands.main.iml" filepath="$PROJECT_DIR$/.idea/modules/ClientCommands.main.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/ClientCommands.test.iml" filepath="$PROJECT_DIR$/.idea/modules/ClientCommands.test.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/com.malaclord.ClientCommands.main.iml" filepath="$PROJECT_DIR$/.idea/modules/com.malaclord.ClientCommands.main.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/com.malaclord.ClientCommands.test.iml" filepath="$PROJECT_DIR$/.idea/modules/com.malaclord.ClientCommands.test.iml" />
     </modules>
   </component>
 </project>

@@ -3,8 +3,8 @@
   "id": "clientcommands",
   "version": "${version}",
   "name": "ClientCommands",
-  "description": "",
-  "authors": [],
+  "description": "Client-side utilities in the form of commands",
+  "authors": ["Malaclord"],
   "contact": {
     "repo": "https://github.com/Malaclord/ClientCommands"
   },

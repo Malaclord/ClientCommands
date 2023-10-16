@@ -32,14 +32,16 @@ public class ClientCommandsClient implements ClientModInitializer {
             LiteralArgumentBuilder argumentBuilder =
             literal("client")
                 .then(literal("give")
-                        .then(argument("item", ItemStackArgumentType.itemStack(registryAccess)).then(argument("amount", IntegerArgumentType.integer(0,64))
+                        .then(argument("item", ItemStackArgumentType.itemStack(registryAccess))
+                                .executes(context -> {
+                                    return giveCommand(context);
+                                }))
+                                .then(argument("amount", IntegerArgumentType.integer(0))
                                 .executes(context -> {
                                     return giveCommand(context);
                                 })
 
-                        )).executes(context -> {
-                            return giveCommand(context);
-                        }));
+                        ));
 
         dispatcher.register(argumentBuilder);
 

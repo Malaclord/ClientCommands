@@ -12,7 +12,7 @@ import net.minecraft.world.GameMode;
 
 import java.util.Objects;
 
-import static com.malaclord.clientcommands.client.ClientCommandsClient.syncInventory;
+import static com.malaclord.clientcommands.client.ClientCommandsClient.*;
 import static net.fabricmc.fabric.api.client.command.v2.ClientCommandManager.argument;
 import static net.fabricmc.fabric.api.client.command.v2.ClientCommandManager.literal;
 
@@ -27,9 +27,21 @@ public class ClientGiveCommand {
                                 .executes(ClientGiveCommand::execute)
                         )).then(argument("item", ItemStackArgumentType.itemStack(registryAccess)).executes(ClientGiveCommand::execute)))
         );
+
+        dispatcher.register(literal("cive")
+                .then(argument("item", ItemStackArgumentType.itemStack(registryAccess))
+                .then(argument("amount", IntegerArgumentType.integer(0))
+                        .executes(ClientGiveCommand::execute)
+                )).then(argument("item", ItemStackArgumentType.itemStack(registryAccess)).executes(ClientGiveCommand::execute)));
     }
 
     private static int execute(CommandContext<FabricClientCommandSource> context) {
+        if (MinecraftClient.getInstance().player == null) return 0;
+        if (isGameModeNotCreative()) {
+            sendNotInCreativeMessage();
+            return 0;
+        }
+
         ItemStack itemStack;
 
         try {
@@ -43,9 +55,6 @@ public class ClientGiveCommand {
         } catch (Exception ignored) {
             return 0;
         }
-
-        // Just making sure.
-        if (MinecraftClient.getInstance().player == null) return 0;
 
         // Only try giving item if in creative.
         if (Objects.requireNonNull(Objects.requireNonNull(MinecraftClient.getInstance().getNetworkHandler()).getPlayerListEntry(MinecraftClient.getInstance().player.getUuid())).getGameMode() != GameMode.CREATIVE) return 0;

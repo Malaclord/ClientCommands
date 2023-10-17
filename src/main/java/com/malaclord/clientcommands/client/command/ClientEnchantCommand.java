@@ -11,7 +11,7 @@ import net.minecraft.command.argument.RegistryEntryArgumentType;
 import net.minecraft.registry.RegistryKeys;
 import net.minecraft.server.command.ServerCommandSource;
 
-import static com.malaclord.clientcommands.client.ClientCommandsClient.syncInventory;
+import static com.malaclord.clientcommands.client.ClientCommandsClient.*;
 import static net.fabricmc.fabric.api.client.command.v2.ClientCommandManager.argument;
 import static net.fabricmc.fabric.api.client.command.v2.ClientCommandManager.literal;
 
@@ -28,6 +28,11 @@ public class ClientEnchantCommand {
 
     private static int execute(CommandContext<FabricClientCommandSource> context) throws CommandSyntaxException {
         if (MinecraftClient.getInstance().player == null) return 0;
+        if (isGameModeNotCreative()) {
+            sendNotInCreativeMessage();
+            return 0;
+        }
+
         MinecraftClient.getInstance().player.getInventory().getMainHandStack().addEnchantment(RegistryEntryArgumentType.getEnchantment((CommandContext<ServerCommandSource>) (Object) context,"enchantment").value(),IntegerArgumentType.getInteger(context,"level"));
 
         syncInventory();
@@ -37,6 +42,11 @@ public class ClientEnchantCommand {
 
     private static int executeClear(CommandContext<FabricClientCommandSource> context) {
         if (MinecraftClient.getInstance().player == null) return 0;
+        if (isGameModeNotCreative()) {
+            sendNotInCreativeMessage();
+            return 0;
+        }
+
         MinecraftClient.getInstance().player.getInventory().getMainHandStack().getEnchantments().clear();
 
         syncInventory();

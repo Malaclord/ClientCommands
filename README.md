@@ -12,11 +12,4 @@ All commands are subcommands of `/client`
 |`rename json <name>`|Same as above, but accepts any valid text component(s).|`rename json {"text":"Cool Sword","color":"gold"}`|
 |`enchant add <enchantment> <level>`|**Creative only**<br>Puts the desired enchantment on the player's currently held item. Does not have the limitations the vanilla command has.|`enchant add minecraft:depth_strider 10`|
 |`enchant clear`|Clears all enchantments on held item.|`enchant clear`|
-
-## Planned tools / features
-- [x] Give
-- [x] Rename
-- [x] Enchant
-- [ ] Modifiers (?)
-- [x] Playerhead
-- [ ] Longer NBT length (not sure how yet)
+|`player-head <name>`|**Creative Only**<br>Get the head of a player.|`player-head jeb_`|

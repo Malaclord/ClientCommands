@@ -1,9 +1,6 @@
 package com.malaclord.clientcommands.client;
 
-import com.malaclord.clientcommands.client.command.ClientEnchantCommand;
-import com.malaclord.clientcommands.client.command.ClientGiveCommand;
-import com.malaclord.clientcommands.client.command.ClientPlayerHeadCommand;
-import com.malaclord.clientcommands.client.command.ClientRenameCommand;
+import com.malaclord.clientcommands.client.command.*;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
 import net.minecraft.client.MinecraftClient;
@@ -27,12 +24,11 @@ public class ClientCommandsClient implements ClientModInitializer {
 
     private void addCommands() {
         ClientCommandRegistrationCallback.EVENT.register(((dispatcher, registryAccess) -> {
-
             ClientGiveCommand.register(dispatcher,registryAccess);
             ClientRenameCommand.register(dispatcher);
             ClientEnchantCommand.register(dispatcher,registryAccess);
             ClientPlayerHeadCommand.register(dispatcher,registryAccess);
-
+            ClientPotionCommand.register(dispatcher,registryAccess);
         }));
     }
 

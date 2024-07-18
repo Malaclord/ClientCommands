@@ -61,9 +61,9 @@ public class ClientAttributeModifierCommand {
                                         .executes(ctx -> executeModify(ctx,ModifyField.VALUE))
                                 )).then(literal("slot").then(argument("slot",AttributeModifierSlotArgumentType.slot())
                                         .executes(ctx -> executeModify(ctx,ModifyField.SLOT))
-                                )).then(literal("id")).then(argument("newId",IdentifierArgumentType.identifier())
+                                )).then(literal("id").then(argument("newId",IdentifierArgumentType.identifier())
                                         .executes(ctx -> executeModify(ctx,ModifyField.ID))
-                                )
+                                ))
                 )).then(literal("list")
                         .executes(ClientAttributeModifierCommand::executeList)
                 ).then(literal("clear")
@@ -99,6 +99,11 @@ public class ClientAttributeModifierCommand {
             return 0;
         }
 
+        if (item.isEmpty()) {
+            error(player,"You need hold an item to use this command!");
+            return 0;
+        }
+
         item.set(DataComponentTypes.ATTRIBUTE_MODIFIERS,AttributeModifiersComponent.DEFAULT);
 
         success(player, "Cleared attribute modifiers of item!", ctx.getInput());
@@ -119,6 +124,11 @@ public class ClientAttributeModifierCommand {
         }
 
         var modifiersComponent = item.get(DataComponentTypes.ATTRIBUTE_MODIFIERS);
+
+        if (item.isEmpty()) {
+            error(player,"You need hold an item to use this command!");
+            return 0;
+        }
 
         if (modifiersComponent == null) return 0;
 
@@ -174,6 +184,11 @@ public class ClientAttributeModifierCommand {
             return 0;
         }
 
+        if (item.isEmpty()) {
+            error(player,"You need hold an item to use this command!");
+            return 0;
+        }
+
         var modifiersComponent = item.get(DataComponentTypes.ATTRIBUTE_MODIFIERS);
 
         if (modifiersComponent == null) return 0;
@@ -200,6 +215,11 @@ public class ClientAttributeModifierCommand {
 
         if (isGameModeNotCreative(player)) {
             sendNotInCreativeMessage(player);
+            return 0;
+        }
+
+        if (item.isEmpty()) {
+            error(player,"You need hold an item to use this command!");
             return 0;
         }
 
@@ -243,6 +263,11 @@ public class ClientAttributeModifierCommand {
         }
 
         var modifiersComponent = item.getComponents().get(DataComponentTypes.ATTRIBUTE_MODIFIERS);
+
+        if (item.isEmpty()) {
+            error(player,"You need hold an item to use this command!");
+            return 0;
+        }
 
         if (modifiersComponent == null) return 0;
 

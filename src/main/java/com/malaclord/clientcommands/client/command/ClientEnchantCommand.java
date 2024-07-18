@@ -26,7 +26,7 @@ public class ClientEnchantCommand {
         dispatcher.register(literal("client")
                 .then(literal("enchant")
                         .then(literal("add").then(argument("enchantment", RegistryEntryReferenceArgumentType.registryEntry(registryAccess, RegistryKeys.ENCHANTMENT))
-                                .then(argument("level", IntegerArgumentType.integer(0,ItemEnchantmentsComponent.MAX_ENCHANTMENT_LEVEL))
+                                .then(argument("level", IntegerArgumentType.integer(0,255))
                                         .executes(ClientEnchantCommand::execute))))
                         .then(literal("remove").then(argument("enchantment", RegistryEntryReferenceArgumentType.registryEntry(registryAccess, RegistryKeys.ENCHANTMENT))
                                 .executes(ClientEnchantCommand::executeRemove)))
@@ -41,7 +41,7 @@ public class ClientEnchantCommand {
             return 0;
         }
 
-        player.getInventory().getMainHandStack().addEnchantment(RegistryEntryReferenceArgumentType.getEnchantment((CommandContext<ServerCommandSource>) (Object) context,"enchantment").value(),IntegerArgumentType.getInteger(context,"level"));
+        player.getInventory().getMainHandStack().addEnchantment(RegistryEntryReferenceArgumentType.getEnchantment((CommandContext<ServerCommandSource>) (Object) context,"enchantment"),IntegerArgumentType.getInteger(context,"level"));
 
         success(player,"Added enchantment!",context.getInput());
 
@@ -93,7 +93,7 @@ public class ClientEnchantCommand {
         for (RegistryEntry<Enchantment> e : enchantments) {
             if (e == enchantment) continue;
 
-            builder.add(e.value(),ec.getLevel(e.value()));
+            builder.add(e,ec.getLevel(e));
         }
 
         player.getInventory().getMainHandStack().set(DataComponentTypes.ENCHANTMENTS, builder.build());

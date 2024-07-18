@@ -10,8 +10,8 @@ import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.command.CommandRegistryAccess;
+import net.minecraft.command.argument.IdentifierArgumentType;
 import net.minecraft.command.argument.RegistryEntryReferenceArgumentType;
-import net.minecraft.command.argument.UuidArgumentType;
 import net.minecraft.component.DataComponentTypes;
 import net.minecraft.component.type.AttributeModifierSlot;
 import net.minecraft.component.type.AttributeModifiersComponent;
@@ -23,6 +23,11 @@ import net.minecraft.registry.entry.RegistryEntry;
 import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.text.*;
 import net.minecraft.util.Formatting;
+import net.minecraft.util.Identifier;
+
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 import static com.malaclord.clientcommands.client.ClientCommandsClient.isGameModeNotCreative;
 import static com.malaclord.clientcommands.client.ClientCommandsClient.syncInventory;
@@ -39,12 +44,15 @@ public class ClientAttributeModifierCommand {
                                 argument("operation", AttributeModifierOperationArgumentType.operation()).then(
                                         argument("value", DoubleArgumentType.doubleArg()).then(
                                                 argument("slot", AttributeModifierSlotArgumentType.slot())
-                                                        .executes(ClientAttributeModifierCommand::executeAdd))))
+                                                        .then(argument("id", IdentifierArgumentType.identifier())
+                                                                .executes(ClientAttributeModifierCommand::executeAdd)
+                                                        ).executes(ClientAttributeModifierCommand::executeAdd))
+                                ))
                 )).then(literal("remove").then(
-                        argument("uuid", UuidArgumentType.uuid())
+                        argument("id", IdentifierArgumentType.identifier())
                                 .executes(ClientAttributeModifierCommand::executeRemove)
                 )).then(literal("modify").then(
-                        argument("uuid", UuidArgumentType.uuid())
+                        argument("id", IdentifierArgumentType.identifier())
                                 .then(literal("attribute").then(argument("attribute", RegistryEntryReferenceArgumentType.registryEntry(registryAccess, RegistryKeys.ATTRIBUTE))
                                         .executes(ctx -> executeModify(ctx,ModifyField.ATTRIBUTE))
                                 )).then(literal("operation").then(argument("operation", AttributeModifierOperationArgumentType.operation())
@@ -53,13 +61,34 @@ public class ClientAttributeModifierCommand {
                                         .executes(ctx -> executeModify(ctx,ModifyField.VALUE))
                                 )).then(literal("slot").then(argument("slot",AttributeModifierSlotArgumentType.slot())
                                         .executes(ctx -> executeModify(ctx,ModifyField.SLOT))
-                                ))
+                                )).then(literal("id")).then(argument("newId",IdentifierArgumentType.identifier())
+                                        .executes(ctx -> executeModify(ctx,ModifyField.ID))
+                                )
                 )).then(literal("list")
                         .executes(ClientAttributeModifierCommand::executeList)
                 ).then(literal("clear")
                         .executes(ClientAttributeModifierCommand::executeClear)
                 )
         ));
+    }
+
+    public static String generateUniqueString(List<String> existingStrings, String input) {
+        Set<String> stringSet = new HashSet<>(existingStrings);
+        if (!stringSet.contains(input)) {
+            return input;
+        }
+
+        int counter = 1;
+        String newString;
+        while (true) {
+            newString = input + counter;
+            if (!stringSet.contains(newString)) {
+                break;
+            }
+            counter++;
+        }
+
+        return newString;
     }
 
     private static int executeClear(CommandContext<FabricClientCommandSource> ctx) {
@@ -82,7 +111,7 @@ public class ClientAttributeModifierCommand {
     private static int executeModify(CommandContext<FabricClientCommandSource> ctx, ModifyField field) throws CommandSyntaxException {
         var player = ctx.getSource().getPlayer();
         var item = player.getInventory().getMainHandStack();
-        var uuid = UuidArgumentType.getUuid((CommandContext<ServerCommandSource>) (Object) ctx,"uuid");
+        var id = IdentifierArgumentType.getIdentifier((CommandContext<ServerCommandSource>) (Object) ctx,"id");
 
         if (isGameModeNotCreative(player)) {
             sendNotInCreativeMessage(player);
@@ -98,7 +127,7 @@ public class ClientAttributeModifierCommand {
         var builder = AttributeModifiersComponent.builder();
 
         for (var modifier : modifiers) {
-            if (modifier.modifier().uuid().equals(uuid)) {
+            if (modifier.modifier().id().equals(id)) {
                 var attribute = modifier.attribute();
                 var operation = modifier.modifier().operation();
                 var value = modifier.modifier().value();
@@ -109,9 +138,10 @@ public class ClientAttributeModifierCommand {
                     case VALUE -> value = DoubleArgumentType.getDouble(ctx,"value");
                     case ATTRIBUTE -> attribute = RegistryEntryReferenceArgumentType.getRegistryEntry((CommandContext<ServerCommandSource>) (Object) ctx,"attribute",RegistryKeys.ATTRIBUTE);
                     case SLOT -> slot = AttributeModifierSlotArgumentType.getSlot(ctx,"slot");
+                    case ID -> id = IdentifierArgumentType.getIdentifier((CommandContext<ServerCommandSource>) (Object) ctx, "newId");
                 }
 
-                builder.add(attribute,new EntityAttributeModifier(uuid,attribute.getIdAsString(),value,operation),slot);
+                builder.add(attribute,new EntityAttributeModifier(id,value,operation),slot);
                 continue;
             }
             builder.add(modifier.attribute(),modifier.modifier(),modifier.slot());
@@ -131,6 +161,14 @@ public class ClientAttributeModifierCommand {
         var args = getArguments(ctx);
         var item = player.getInventory().getMainHandStack();
 
+        String id = null;
+
+        try {
+            id = IdentifierArgumentType.getIdentifier((CommandContext<ServerCommandSource>) (Object) ctx, "id").toString();
+        } catch (IllegalArgumentException ignored) {
+
+        }
+
         if (isGameModeNotCreative(player)) {
             sendNotInCreativeMessage(player);
             return 0;
@@ -140,7 +178,11 @@ public class ClientAttributeModifierCommand {
 
         if (modifiersComponent == null) return 0;
 
-        var modifier = new EntityAttributeModifier(args.attribute.getIdAsString(),args.value,args.operation);
+
+        var allIds = modifiersComponent.modifiers().stream().map(m -> m.modifier().id().toString()).toList();
+        var newId = generateUniqueString(allIds,id == null ? Identifier.of(player.getNameForScoreboard().toLowerCase(),Identifier.of(args.attribute.getIdAsString()).getPath()).toString() : id);
+
+        var modifier = new EntityAttributeModifier(Identifier.of(newId),args.value,args.operation);
 
         item.set(DataComponentTypes.ATTRIBUTE_MODIFIERS, modifiersComponent.with(args.attribute,modifier,args.slot));
 
@@ -154,7 +196,7 @@ public class ClientAttributeModifierCommand {
     private static int executeRemove(CommandContext<FabricClientCommandSource> ctx) {
         var player = ctx.getSource().getPlayer();
         var item = player.getInventory().getMainHandStack();
-        var uuid = UuidArgumentType.getUuid((CommandContext<ServerCommandSource>) (Object) ctx,"uuid");
+        var id = IdentifierArgumentType.getIdentifier((CommandContext<ServerCommandSource>) (Object) ctx,"id");
 
         if (isGameModeNotCreative(player)) {
             sendNotInCreativeMessage(player);
@@ -170,7 +212,7 @@ public class ClientAttributeModifierCommand {
         var builder = AttributeModifiersComponent.builder();
 
         for (var modifier : modifiers) {
-            if (modifier.modifier().uuid().equals(uuid)) continue;
+            if (modifier.modifier().id().equals(id)) continue;
             builder.add(modifier.attribute(),modifier.modifier(),modifier.slot());
         }
 
@@ -224,7 +266,7 @@ public class ClientAttributeModifierCommand {
         int i = 0;
 
         for (var modifier : modifiersComponent.modifiers()) {
-            String uuid = modifier.modifier().uuid().toString();
+            String id = modifier.modifier().id().toString();
 
             text.append((i++ != 0 ? "\n" : "") + "> ");
 
@@ -232,7 +274,7 @@ public class ClientAttributeModifierCommand {
                     Text.literal("[-]")
                             .setStyle(Style.EMPTY
                                     .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, Text.literal("Remove").withColor(PlayerMessage.ERROR_COLOR)))
-                                    .withClickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, "/client modifier remove "+uuid))
+                                    .withClickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, "/client modifier remove "+id))
                             ).withColor(PlayerMessage.ERROR_COLOR)
             ).append(" ");
 
@@ -240,15 +282,15 @@ public class ClientAttributeModifierCommand {
                     Text.literal("[\uD83D\uDD27]")
                             .setStyle(Style.EMPTY
                                     .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, Text.literal("Modify").withColor(PlayerMessage.SUCCESS_COLOR)))
-                                    .withClickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, "/client modifier modify "+uuid))
+                                    .withClickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, "/client modifier modify "+id))
                             ).withColor(PlayerMessage.SUCCESS_COLOR)
             ).append(" ");
 
             text.append(
-                    Text.literal(truncateWithEllipsis(modifier.modifier().uuid().toString(),10) + " ")
+                    Text.literal((modifier.modifier().id().toString()) + " ")
                             .setStyle(Style.EMPTY
                                     .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,Text.literal("Click to copy")))
-                                    .withClickEvent(new ClickEvent(ClickEvent.Action.COPY_TO_CLIPBOARD, uuid))
+                                    .withClickEvent(new ClickEvent(ClickEvent.Action.COPY_TO_CLIPBOARD, id))
                             )
             );
 
@@ -289,6 +331,7 @@ public class ClientAttributeModifierCommand {
         OPERATION,
         VALUE,
         ATTRIBUTE,
-        SLOT
+        SLOT,
+        ID
     }
 }

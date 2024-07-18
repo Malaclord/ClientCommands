@@ -5,8 +5,8 @@ import java.util.List;
 import java.util.Objects;
 
 public enum PotionTypes {
-    SPLASH ("splash"),
     NORMAL ("normal"),
+    SPLASH ("splash"),
     LINGER ("linger")
     ;
 

@@ -1,71 +1,80 @@
 package com.malaclord.clientcommands.client.command;
 
 import com.malaclord.clientcommands.client.command.argument.PotionTypeArgumentType;
+import com.malaclord.clientcommands.client.command.argument.PotionTypes;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
-import com.mojang.brigadier.builder.RequiredArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.command.CommandRegistryAccess;
-import net.minecraft.command.argument.RegistryEntryArgumentType;
+import net.minecraft.command.argument.ColorArgumentType;
+import net.minecraft.command.argument.RegistryEntryReferenceArgumentType;
+import net.minecraft.component.DataComponentTypes;
+import net.minecraft.component.type.PotionContentsComponent;
 import net.minecraft.entity.effect.StatusEffect;
 import net.minecraft.entity.effect.StatusEffectInstance;
+import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.potion.Potion;
-import net.minecraft.potion.PotionUtil;
 import net.minecraft.registry.RegistryKeys;
 import net.minecraft.registry.entry.RegistryEntry;
 import net.minecraft.server.command.ServerCommandSource;
-import net.minecraft.text.Text;
+import net.minecraft.util.Formatting;
+
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
 
 import static com.malaclord.clientcommands.client.ClientCommandsClient.*;
+import static com.malaclord.clientcommands.client.util.PlayerMessage.*;
 import static net.fabricmc.fabric.api.client.command.v2.ClientCommandManager.*;
 
+@SuppressWarnings("unchecked")
 public class ClientPotionCommand {
     public static void register(CommandDispatcher<FabricClientCommandSource> dispatcher, CommandRegistryAccess registryAccess) {
-        RequiredArgumentBuilder<FabricClientCommandSource, RegistryEntry.Reference<StatusEffect>> effectArg = argument("effect", RegistryEntryArgumentType.registryEntry(registryAccess, RegistryKeys.STATUS_EFFECT));
-
         dispatcher.register(literal("client")
                 .then(literal("potion")
                         .then(literal("create")
                                 .then(argument("type", PotionTypeArgumentType.potionType())
-                                        .then(effectArg
+                                        .then(argument("effect", RegistryEntryReferenceArgumentType.registryEntry(registryAccess, RegistryKeys.STATUS_EFFECT))
                                                 .then(argument("amplifier", IntegerArgumentType.integer(0,255))
                                                         .then(literal("infinite")
-                                                                .then(argument("showParticles", BoolArgumentType.bool())
+                                                                .then(argument("hideParticles", BoolArgumentType.bool())
                                                                         .executes(ClientPotionCommand::executeCreate)
                                                                 )
                                                                 .executes(ClientPotionCommand::executeCreate)
                                                         )
                                                         .then(argument("duration",IntegerArgumentType.integer(0,1000000))
-                                                                .then(argument("showParticles", BoolArgumentType.bool())
+                                                                .then(argument("hideParticles", BoolArgumentType.bool())
                                                                         .executes(ClientPotionCommand::executeCreate)
                                                                 )
                                                                 .executes(ClientPotionCommand::executeCreate)
                                                         )
+                                                        .executes(ClientPotionCommand::executeCreate)
                                                 )
+                                                .executes(ClientPotionCommand::executeCreate)
                                         )
                                 )
                         )
                         .then(literal("modify")
                                 .then(literal("effect")
                                         .then(literal("set")
-                                                .then(effectArg
+                                                .then(argument("effect", RegistryEntryReferenceArgumentType.registryEntry(registryAccess, RegistryKeys.STATUS_EFFECT))
                                                         .then(argument("amplifier", IntegerArgumentType.integer(0,255))
                                                                 .then(literal("infinite")
-                                                                        .then(argument("showParticles", BoolArgumentType.bool())
+                                                                        .then(argument("hideParticles", BoolArgumentType.bool())
                                                                                 .executes(ClientPotionCommand::executeModifyEffect)
                                                                         )
                                                                         .executes(ClientPotionCommand::executeModifyEffect)
                                                                 )
                                                                 .then(argument("duration",IntegerArgumentType.integer(0,1000000))
-                                                                        .then(argument("showParticles", BoolArgumentType.bool())
+                                                                        .then(argument("hideParticles", BoolArgumentType.bool())
                                                                                 .executes(ClientPotionCommand::executeModifyEffect)
                                                                         )
                                                                         .executes(ClientPotionCommand::executeModifyEffect)
@@ -74,14 +83,19 @@ public class ClientPotionCommand {
                                                 )
                                         )
                                         .then(literal("remove")
-                                                .then(effectArg
+                                                .then(argument("effect", RegistryEntryReferenceArgumentType.registryEntry(registryAccess, RegistryKeys.STATUS_EFFECT))
                                                         .executes(ClientPotionCommand::executeRemoveEffect)
                                                 )
                                         )
                                 )
                                 .then(literal("color")
-                                        .then(argument("color", StringArgumentType.string())
+                                        .then(argument("color", ColorArgumentType.color())
                                                 .executes(ClientPotionCommand::executeModifyColor)
+                                        )
+                                        .then(literal("hex")
+                                                .then(argument("colorHex", StringArgumentType.string())
+                                                        .executes(ClientPotionCommand::executeModifyColorHex)
+                                                )
                                         )
                                 )
                                 .then(literal("type")
@@ -94,73 +108,270 @@ public class ClientPotionCommand {
         );
     }
 
-    private static int executeCreate(CommandContext<?> context) throws CommandSyntaxException {
+
+
+    private static int executeCreate(CommandContext<FabricClientCommandSource> context) throws CommandSyntaxException {
         ClientPlayerEntity player;
 
-        System.out.println("0");
-
         if ((player = MinecraftClient.getInstance().player) == null) return 0;
-        if (isGameModeNotCreative()) {
-            sendNotInCreativeMessage();
+        if (isGameModeNotCreative(player)) {
+            sendNotInCreativeMessage(player);
             return 0;
         }
 
-        player.sendMessage(Text.literal("1"));
+        StatusEffect effect = RegistryEntryReferenceArgumentType.getStatusEffect((CommandContext<ServerCommandSource>) (Object) context,"effect").value();
+        PotionTypes type = PotionTypeArgumentType.getPotionType(context,"type");
+        var args = getArguments(context);
 
-        StatusEffect effect = RegistryEntryArgumentType.getStatusEffect((CommandContext<ServerCommandSource>) context,"effect").value();
-        int amplifier = IntegerArgumentType.getInteger(context,"amplifier");
-        int duration = IntegerArgumentType.getInteger(context,"duration");
-        boolean showParticles;
+        StatusEffectInstance effectInstance = new StatusEffectInstance(RegistryEntry.of(effect),args.duration,args.amplifier,false,args.showParticles);
 
-        try {
-            showParticles = BoolArgumentType.getBool(context,"showParticles");
-        } catch (Exception ignored) {
-            showParticles = true;
+        Potion potion = new Potion(effectInstance);
+
+        Item item;
+
+        switch (type) {
+            case LINGER -> item = Items.LINGERING_POTION;
+            case SPLASH -> item = Items.SPLASH_POTION;
+            default -> item = Items.POTION;
         }
 
-        player.sendMessage(Text.literal("2"));
+        ItemStack potionStack = new ItemStack(item);
 
+        PotionContentsComponent pcc = PotionContentsComponent.DEFAULT;
 
-        StatusEffectInstance effectInstance = new StatusEffectInstance(effect,amplifier,duration,false,showParticles);
+        for (StatusEffectInstance sei : potion.getEffects()) {
+            pcc = pcc.with(sei);
+        }
 
-        Potion potion = new Potion();
+        potionStack.set(DataComponentTypes.POTION_CONTENTS,pcc);
+        potionStack.set(DataComponentTypes.ITEM_NAME, potion.getEffects().getFirst().getEffectType().value().getName());
 
-        potion.getEffects().add(effectInstance);
+        setColor(potionStack,potion.getEffects().getFirst().getEffectType().value().getColor());
 
-        ItemStack potionStack = new ItemStack(Items.POTION);
-
-        PotionUtil.setPotion(potionStack,potion);
-
-        player.sendMessage(Text.literal("3"));
-
+        if (player.getInventory().getEmptySlot() == -1 && player.getInventory().getOccupiedSlotWithRoomForStack(potionStack) == -1) {
+            warn(player,"You don't have space in your inventory for this item!");
+        } else {
+            success(player,"Created potion!",context.getInput());
+        }
 
         player.giveItemStack(potionStack);
 
         syncInventory();
 
-        player.sendMessage(Text.literal("4"));
+        return 1;
+    }
 
+    private static int executeModifyEffect(CommandContext<FabricClientCommandSource> context) throws CommandSyntaxException {
+        ClientPlayerEntity player;
+
+        if ((player = MinecraftClient.getInstance().player) == null) return 0;
+        if (isGameModeNotCreative(player)) {
+            sendNotInCreativeMessage(player);
+            return 0;
+        }
+
+        var effect = RegistryEntryReferenceArgumentType.getStatusEffect((CommandContext<ServerCommandSource>) (Object) context,"effect");
+        var args = getArguments(context);
+
+        ItemStack potion = heldPotion(player);
+
+        if (potion == null) {
+            error(player,"You need to hold a potion for this command to work!");
+            return 0;
+        }
+
+        var pcc = potion.get(DataComponentTypes.POTION_CONTENTS);
+
+        if (pcc == null) return 0;
+
+        var customEffect = pcc.customEffects().stream().filter(p ->
+            p.getEffectType().value() == effect.value()
+        ).findFirst();
+
+        customEffect.ifPresent(statusEffectInstance -> pcc.customEffects().remove(statusEffectInstance));
+
+        potion.set(DataComponentTypes.POTION_CONTENTS,pcc.with(new StatusEffectInstance(effect,args.duration,args.amplifier,false,args.showParticles,true)));
 
         return 1;
     }
 
-    private static int executeModifyEffect(CommandContext<FabricClientCommandSource> context) {
+    private static int executeModifyType(CommandContext<?> context) {
+        ClientPlayerEntity player;
 
-        return 1;
-    }
+        if ((player = MinecraftClient.getInstance().player) == null) return 0;
+        if (isGameModeNotCreative(player)) {
+            sendNotInCreativeMessage(player);
+            return 0;
+        }
 
-    private static int executeModifyType(CommandContext<FabricClientCommandSource> context) {
+        PotionTypes type = PotionTypeArgumentType.getPotionType(context,"type");
+
+        Item item;
+
+        switch (type) {
+            case LINGER -> item = Items.LINGERING_POTION;
+            case SPLASH -> item = Items.SPLASH_POTION;
+            default -> item = Items.POTION;
+        }
+
+        ItemStack potion = heldPotion(player);
+
+        if (potion == null) {
+            error(player,"You need to hold a potion for this command to work!");
+            return 0;
+        }
+
+        ItemStack newPotionStack = potion.copyComponentsToNewStack(item,potion.getCount());
+
+
+        player.getInventory().setStack(player.getInventory().getSlotWithStack(potion),newPotionStack);
+
+        syncInventory();
 
         return 1;
     }
 
     private static int executeModifyColor(CommandContext<FabricClientCommandSource> context) {
+        ClientPlayerEntity player = context.getSource().getPlayer();
+
+        if (isGameModeNotCreative(player)) {
+            sendNotInCreativeMessage(player);
+            return 0;
+        }
+
+        ItemStack potion = heldPotion(player);
+
+        if (potion == null) {
+            error(player,"You need to hold a potion for this command to work!");
+            return 0;
+        }
+
+        Formatting color = ColorArgumentType.getColor((CommandContext<ServerCommandSource>) (Object) context,"color");
+
+        int colorInt;
+
+
+        if (color == Formatting.RESET) colorInt = Objects.requireNonNull(potion.get(DataComponentTypes.POTION_CONTENTS)).getEffects().iterator().next().getEffectType().value().getColor();
+        else colorInt = color.getColorValue();
+
+        setColor(potion,colorInt);
+
+        syncInventory();
 
         return 1;
     }
 
-    private static int executeRemoveEffect(CommandContext<FabricClientCommandSource> context) {
+    private static int executeModifyColorHex(CommandContext<FabricClientCommandSource> context) {
+        ClientPlayerEntity player = context.getSource().getPlayer();
+
+        if (isGameModeNotCreative(player)) {
+            sendNotInCreativeMessage(player);
+            return 0;
+        }
+
+        ItemStack potion = heldPotion(player);
+
+        if (potion == null) {
+            error(player,"You need to hold a potion for this command to work!");
+            return 0;
+        }
+
+        String colorHex = StringArgumentType.getString(context,"colorHex").toLowerCase().trim();
+
+        int colorInt;
+
+        try {
+            colorInt = Integer.parseInt(colorHex, 16);
+        } catch (NumberFormatException ignored) {
+            error(player,"Hex format incorrect!");
+            return 0;
+        }
+
+        setColor(potion,colorInt);
+
+        syncInventory();
 
         return 1;
     }
+
+    @SuppressWarnings("unchecked")
+    private static int executeRemoveEffect(CommandContext<FabricClientCommandSource> context) throws CommandSyntaxException {
+        ClientPlayerEntity player = context.getSource().getPlayer();
+
+        if (isGameModeNotCreative(player)) {
+            sendNotInCreativeMessage(player);
+            return 0;
+        }
+
+        StatusEffect effect = RegistryEntryReferenceArgumentType.getStatusEffect((CommandContext<ServerCommandSource>) (Object) context,"effect").value();
+
+        ItemStack potion = heldPotion(player);
+
+        if (potion == null) {
+            error(player,"You need to hold a potion for this command to work!");
+            return 0;
+        }
+
+        var pcc = potion.get(DataComponentTypes.POTION_CONTENTS);
+
+        if (pcc == null) return 0;
+
+        var customEffect = pcc.customEffects().stream().filter(p ->
+                p.getEffectType().value() == effect
+        ).findFirst();
+
+        if (customEffect.isEmpty()) return 0;
+
+        pcc.customEffects().remove(customEffect.get());
+
+        return 1;
+    }
+
+    private static final List<Item> potionTypes = List.of(Items.POTION,Items.SPLASH_POTION,Items.LINGERING_POTION);
+
+    private static ItemStack heldPotion(ClientPlayerEntity player) {
+        ItemStack potionStack = player.getInventory().getMainHandStack();
+
+        if (!potionTypes.contains(potionStack.getItem())) return null;
+
+        return potionStack;
+    }
+
+    private static void setColor(ItemStack potion, int color) {
+        PotionContentsComponent pcc;
+        pcc = new PotionContentsComponent(Optional.empty(),Optional.of(color), Objects.requireNonNull(potion.get(DataComponentTypes.POTION_CONTENTS)).customEffects());
+
+        potion.set(DataComponentTypes.POTION_CONTENTS,pcc);
+
+    }
+
+    private static PotionCommandArguments getArguments(CommandContext<FabricClientCommandSource> ctx) {
+        int amplifier;
+
+        try {
+            amplifier = IntegerArgumentType.getInteger(ctx,"amplifier");
+        } catch (Exception ignored) {
+            amplifier = 0;
+        }
+
+        int duration;
+
+        try {
+            duration = IntegerArgumentType.getInteger(ctx,"duration") * 20;
+        } catch (Exception ignored) {
+            duration = -1;
+        }
+
+        boolean showParticles;
+
+        try {
+            showParticles = !BoolArgumentType.getBool(ctx,"hideParticles");
+        } catch (Exception ignored) {
+            showParticles = true;
+        }
+
+        return new PotionCommandArguments(amplifier,duration,showParticles);
+    }
+
+    private record PotionCommandArguments(int amplifier, int duration, boolean showParticles) {}
 }

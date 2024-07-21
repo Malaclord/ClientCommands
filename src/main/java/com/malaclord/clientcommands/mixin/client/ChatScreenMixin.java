@@ -34,7 +34,8 @@ public abstract class ChatScreenMixin extends Screen implements IChatScreenMixed
     @Shadow
     protected TextFieldWidget chatField;
 
-    @Shadow private ChatInputSuggestor chatInputSuggestor;
+    @Shadow
+    ChatInputSuggestor chatInputSuggestor;
 
     protected ChatScreenMixin(Text title) {
         super(title);

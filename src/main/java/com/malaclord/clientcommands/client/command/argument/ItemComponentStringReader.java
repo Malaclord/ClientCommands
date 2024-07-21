@@ -18,7 +18,6 @@ import net.minecraft.nbt.NbtElement;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.StringNbtReader;
 import net.minecraft.registry.Registries;
-import net.minecraft.registry.RegistryKey;
 import net.minecraft.registry.RegistryKeys;
 import net.minecraft.registry.RegistryWrapper;
 import net.minecraft.text.Text;
@@ -34,16 +33,10 @@ import java.util.function.Function;
 
 
 public class ItemComponentStringReader {
-    static final DynamicCommandExceptionType UNKNOWN_COMPONENT_EXCEPTION = new DynamicCommandExceptionType((id) -> {
-        return Text.stringifiedTranslatable("arguments.item.component.unknown", new Object[]{id});
-    });
-    static final Dynamic2CommandExceptionType MALFORMED_COMPONENT_EXCEPTION = new Dynamic2CommandExceptionType((type, error) -> {
-        return Text.stringifiedTranslatable("arguments.item.component.malformed", new Object[]{type, error});
-    });
+    static final DynamicCommandExceptionType UNKNOWN_COMPONENT_EXCEPTION = new DynamicCommandExceptionType((id) -> Text.stringifiedTranslatable("arguments.item.component.unknown", id));
+    static final Dynamic2CommandExceptionType MALFORMED_COMPONENT_EXCEPTION = new Dynamic2CommandExceptionType((type, error) -> Text.stringifiedTranslatable("arguments.item.component.malformed", type, error));
     static final SimpleCommandExceptionType COMPONENT_EXPECTED_EXCEPTION = new SimpleCommandExceptionType(Text.translatable("arguments.item.component.expected"));
-    static final DynamicCommandExceptionType REPEATED_COMPONENT_EXCEPTION = new DynamicCommandExceptionType((type) -> {
-        return Text.stringifiedTranslatable("arguments.item.component.repeated", new Object[]{type});
-    });
+    static final DynamicCommandExceptionType REPEATED_COMPONENT_EXCEPTION = new DynamicCommandExceptionType((type) -> Text.stringifiedTranslatable("arguments.item.component.repeated", type));
     public static final char OPEN_SQUARE_BRACKET = '[';
     public static final char CLOSED_SQUARE_BRACKET = ']';
     public static final char COMMA = ',';
@@ -71,11 +64,11 @@ public class ItemComponentStringReader {
             }
         });
         ComponentChanges componentChanges = builder.build();
-        validate(reader, componentChanges);
+        validate();
         return new ItemComponentsResult(componentChanges);
     }
 
-    private static void validate(StringReader reader, ComponentChanges components) throws CommandSyntaxException {
+    private static void validate() {
 
     }
 
@@ -85,9 +78,8 @@ public class ItemComponentStringReader {
         try {
             (new Reader(reader, callbacks)).read();
         } catch (CommandSyntaxException var5) {
-            CommandSyntaxException commandSyntaxException = var5;
             reader.setCursor(i);
-            throw commandSyntaxException;
+            throw var5;
         }
     }
 
@@ -99,7 +91,7 @@ public class ItemComponentStringReader {
 
         try {
             reader.read();
-        } catch (CommandSyntaxException var6) {
+        } catch (CommandSyntaxException ignored) {
         }
 
         return suggestionCallbacks.getSuggestions(builder, stringReader);
@@ -117,7 +109,7 @@ public class ItemComponentStringReader {
         }
     }
 
-    public static record ItemComponentsResult(ComponentChanges components) {
+    public record ItemComponentsResult(ComponentChanges components) {
 
         public ComponentChanges components() {
             return this.components;
@@ -145,11 +137,11 @@ public class ItemComponentStringReader {
         private void readComponents() throws CommandSyntaxException {
             this.reader.expect(OPEN_SQUARE_BRACKET);
             this.callbacks.setSuggestor(this::suggestComponents);
-            Set<ComponentType<?>> set = new ReferenceArraySet();
+            Set<ComponentType<?>> set = new ReferenceArraySet<>();
 
             while(this.reader.canRead() && this.reader.peek() != CLOSED_SQUARE_BRACKET) {
                 this.reader.skipWhitespace();
-                ComponentType componentType;
+                ComponentType<?> componentType;
                 if (this.reader.canRead() && this.reader.peek() == EXCLAMATION_MARK) {
                     this.reader.skip();
                     this.callbacks.setSuggestor(this::suggestComponentsToRemove);
@@ -199,7 +191,7 @@ public class ItemComponentStringReader {
             } else {
                 int i = reader.getCursor();
                 Identifier identifier = Identifier.fromCommandInput(reader);
-                ComponentType<?> componentType = (ComponentType)Registries.DATA_COMPONENT_TYPE.get(identifier);
+                ComponentType<?> componentType = Registries.DATA_COMPONENT_TYPE.get(identifier);
                 if (componentType != null && !componentType.shouldSkipSerialization()) {
                     return componentType;
                 } else {
@@ -244,10 +236,6 @@ public class ItemComponentStringReader {
             return builder.buildFuture();
         }
 
-        private CompletableFuture<Suggestions> suggestItems(SuggestionsBuilder builder) {
-            return CommandSource.suggestIdentifiers(ItemComponentStringReader.this.itemRegistry.streamKeys().map(RegistryKey::getValue), builder);
-        }
-
         private CompletableFuture<Suggestions> suggestComponents(SuggestionsBuilder builder) {
             builder.suggest(String.valueOf('!'));
             return this.suggestComponents(builder, String.valueOf(EQUAL_SIGN));
@@ -259,12 +247,10 @@ public class ItemComponentStringReader {
 
         private CompletableFuture<Suggestions> suggestComponents(SuggestionsBuilder builder, String suffix) {
             String string = builder.getRemaining().toLowerCase(Locale.ROOT);
-            CommandSource.forEachMatching(Registries.DATA_COMPONENT_TYPE.getEntrySet(), string, (entry) -> {
-                return ((RegistryKey)entry.getKey()).getValue();
-            }, (entry) -> {
-                ComponentType<?> componentType = (ComponentType)entry.getValue();
+            CommandSource.forEachMatching(Registries.DATA_COMPONENT_TYPE.getEntrySet(), string, (entry) -> entry.getKey().getValue(), (entry) -> {
+                ComponentType<?> componentType = entry.getValue();
                 if (componentType.getCodec() != null) {
-                    Identifier identifier = ((RegistryKey)entry.getKey()).getValue();
+                    Identifier identifier = entry.getKey().getValue();
                     String var10001 = String.valueOf(identifier);
                     builder.suggest(var10001 + suffix);
                 }
@@ -286,7 +272,7 @@ public class ItemComponentStringReader {
         }
 
         public CompletableFuture<Suggestions> getSuggestions(SuggestionsBuilder builder, StringReader reader) {
-            return (CompletableFuture)this.suggestor.apply(builder.createOffset(reader.getCursor()));
+            return this.suggestor.apply(builder.createOffset(reader.getCursor()));
         }
     }
 }

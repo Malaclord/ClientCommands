@@ -28,6 +28,7 @@ public class ClientCommandsClient implements ClientModInitializer {
             ClientPlayerHeadCommand.register(dispatcher);
             ClientPotionCommand.register(dispatcher,registryAccess);
             ClientAttributeModifierCommand.register(dispatcher,registryAccess);
+            ClientComponentCommand.register(dispatcher,registryAccess);
         }));
     }
 

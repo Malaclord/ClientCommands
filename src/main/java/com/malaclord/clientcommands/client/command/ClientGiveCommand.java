@@ -4,20 +4,24 @@ import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
-import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.command.CommandRegistryAccess;
 import net.minecraft.command.argument.ItemStackArgumentType;
 import net.minecraft.item.ItemStack;
-import net.minecraft.world.GameMode;
+import net.minecraft.text.Text;
 
-import java.util.Objects;
+
+import java.util.function.Function;
 
 import static com.malaclord.clientcommands.client.ClientCommandsClient.*;
+import static com.malaclord.clientcommands.client.util.PlayerMessage.*;
 import static net.fabricmc.fabric.api.client.command.v2.ClientCommandManager.argument;
 import static net.fabricmc.fabric.api.client.command.v2.ClientCommandManager.literal;
 
 
 public class ClientGiveCommand {
+    public static final Function<ItemStack, Text> SUCCESS_MESSAGE = itemStack -> Text.translatable("commands.client.give.success",itemStack.getCount(),itemStack.getName());
+
     public static void register(CommandDispatcher<FabricClientCommandSource> dispatcher, CommandRegistryAccess registryAccess) {
 
         dispatcher
@@ -36,9 +40,9 @@ public class ClientGiveCommand {
     }
 
     private static int execute(CommandContext<FabricClientCommandSource> context) {
-        if (MinecraftClient.getInstance().player == null) return 0;
-        if (isGameModeNotCreative()) {
-            sendNotInCreativeMessage();
+        ClientPlayerEntity player = context.getSource().getPlayer();
+        if (isGameModeNotCreative(player)) {
+            sendNotInCreativeMessage(player);
             return 0;
         }
 
@@ -56,11 +60,10 @@ public class ClientGiveCommand {
             return 0;
         }
 
-        // Only try giving item if in creative.
-        if (Objects.requireNonNull(Objects.requireNonNull(MinecraftClient.getInstance().getNetworkHandler()).getPlayerListEntry(MinecraftClient.getInstance().player.getUuid())).getGameMode() != GameMode.CREATIVE) return 0;
+        sendNoSpaceOrSuccess(player,itemStack,SUCCESS_MESSAGE.apply(itemStack),context.getInput());
 
         // Give item to player.
-        MinecraftClient.getInstance().player.giveItemStack(itemStack);
+        player.giveItemStack(itemStack);
 
         syncInventory();
 

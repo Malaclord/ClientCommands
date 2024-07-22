@@ -1,20 +1,18 @@
 package com.malaclord.clientcommands.client;
 
-import com.malaclord.clientcommands.client.command.ClientEnchantCommand;
-import com.malaclord.clientcommands.client.command.ClientGiveCommand;
-import com.malaclord.clientcommands.client.command.ClientPlayerHeadCommand;
-import com.malaclord.clientcommands.client.command.ClientRenameCommand;
+import com.malaclord.clientcommands.client.command.*;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.screen.ingame.InventoryScreen;
-import net.minecraft.text.Style;
-import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
+import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.world.GameMode;
 
 import java.util.Objects;
+
+import static com.malaclord.clientcommands.client.util.PlayerMessage.sendNotHoldingItemMessage;
+import static com.malaclord.clientcommands.client.util.PlayerMessage.sendNotInCreativeMessage;
 
 public class ClientCommandsClient implements ClientModInitializer {
     /**
@@ -27,12 +25,13 @@ public class ClientCommandsClient implements ClientModInitializer {
 
     private void addCommands() {
         ClientCommandRegistrationCallback.EVENT.register(((dispatcher, registryAccess) -> {
-
             ClientGiveCommand.register(dispatcher,registryAccess);
-            ClientRenameCommand.register(dispatcher);
+            ClientRenameCommand.register(dispatcher,registryAccess);
             ClientEnchantCommand.register(dispatcher,registryAccess);
-            ClientPlayerHeadCommand.register(dispatcher,registryAccess);
-
+            ClientPlayerHeadCommand.register(dispatcher);
+            ClientPotionCommand.register(dispatcher,registryAccess);
+            ClientAttributeModifierCommand.register(dispatcher,registryAccess);
+            ClientComponentCommand.register(dispatcher,registryAccess);
         }));
     }
 
@@ -50,12 +49,25 @@ public class ClientCommandsClient implements ClientModInitializer {
         MinecraftClient.getInstance().setScreen(currentScreen);
     }
 
-    public static boolean isGameModeNotCreative() {
-        return Objects.requireNonNull(Objects.requireNonNull(MinecraftClient.getInstance().getNetworkHandler()).getPlayerListEntry(MinecraftClient.getInstance().player.getUuid())).getGameMode() != GameMode.CREATIVE;
+    public static boolean isGameModeNotCreative(ClientPlayerEntity player) {
+        return Objects.requireNonNull(Objects.requireNonNull(MinecraftClient.getInstance().getNetworkHandler()).getPlayerListEntry(player.getUuid())).getGameMode() != GameMode.CREATIVE;
     }
 
-    public static void sendNotInCreativeMessage() {
-        if (MinecraftClient.getInstance().player == null) return;
-        MinecraftClient.getInstance().player.sendMessage(Text.literal("You need to be in Creative Mode to use this command!").setStyle(Style.EMPTY.withColor(Formatting.RED)));
+    public static boolean checkNotCreative(ClientPlayerEntity player) {
+        if (isGameModeNotCreative(player)) {
+            sendNotInCreativeMessage(player);
+            return true;
+        }
+
+        return false;
+    }
+
+    public static boolean checkNotHoldingItem(ClientPlayerEntity player) {
+        if (player.getMainHandStack().isEmpty()) {
+            sendNotHoldingItemMessage(player);
+            return true;
+        }
+
+        return false;
     }
 }

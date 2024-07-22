@@ -1,0 +1,33 @@
+{
+  "commands.client.not_in_creative": "You need to be in Creative Mode to use this command!", //Tev ir jābut radošajā režīmā, lai izmantotu šo komandu!
+  "commands.client.click_to_copy": "Click to copy command", //Klikšķini, lai nokopētu komandu
+  "commands.client.not_holding_item": "You need to hold an item to use this command!", //Tev ir jātur lieta, lai izmantotu šo komandu!
+  "commands.client.rename.success": "Renamed item to %s!", //Lieta pārsaukta uz %s!
+  "commands.client.no_space_in_inventory": "You don't have space in your inventory for this item!", //Jums nav pietiekami daudz vietas jūsu inventārā!
+  "commands.client.potion.create.success": "Created %s!", //meow
+  "commands.client.potion.modify.success": "Modified %s!",
+  "commands.client.potion.modify.effect.set.success": "Set amplifier and duration of %s in %s to %s and %s!",
+  "commands.client.potion.modify.effect.remove.success": "Removed effect %s from %s!",
+  "commands.client.potion.modify.effect.remove.no_effect": "%s does not have %s!",
+  "commands.client.potion.potion_name": "Potion of %s",
+  "commands.client.potion.splash_potion_name": "Splash Potion of %s",
+  "commands.client.potion.lingering_potion_name": "Lingering Potion of %s",
+  "commands.client.potion.not_holding_potion": "You need to hold a potion to use this command!",
+  "commands.client.give.success": "Gave you %s %s!",
+  "commands.client.enchant.add.success": "Added enchantment %s to %s!",
+  "commands.client.enchant.remove.success": "Removed enchantment %s from %s!",
+  "commands.client.enchant.clear.success": "Cleared all enchantments from %s!",
+  "commands.client.enchant.remove.no_enchantment": "%s is not enchanted with %s!",
+  "commands.client.component.merge.success": "Merged components on %s!",
+  "commands.client.component.set.success": "Set components of %s!",
+  "commands.client.modifier.list.title": "Attribute modifiers of %s:",
+  "commands.client.modifier.id_not_found": "Attribute modifier %s not found on %s!",
+  "commands.client.modifier.list.no_modifiers": "%s does not have any attribute modifiers!",
+  "commands.client.modifier.add.success": "Added attribute modifier %s to %s!",
+  "commands.client.modifier.remove.success": "Removed attribute modifier %s from %s!",
+  "commands.client.modifier.list.remove_tooltip": "Remove",
+  "commands.client.modifier.list.modify_tooltip": "Modify",
+  "commands.client.modifier.list.copy_id_tooltip": "Click to copy ID",
+  "commands.client.modifier.clear.success": "Cleared attribute modifiers of %s!",
+  "commands.client.modifier.modify.success": "Modified attribute modifier %s on %s!"
+}

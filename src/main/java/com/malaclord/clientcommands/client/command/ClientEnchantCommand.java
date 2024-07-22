@@ -11,9 +11,13 @@ import net.minecraft.command.argument.RegistryEntryReferenceArgumentType;
 import net.minecraft.component.DataComponentTypes;
 import net.minecraft.component.type.ItemEnchantmentsComponent;
 import net.minecraft.enchantment.Enchantment;
+import net.minecraft.item.ItemStack;
 import net.minecraft.registry.RegistryKeys;
 import net.minecraft.registry.entry.RegistryEntry;
 import net.minecraft.server.command.ServerCommandSource;
+import net.minecraft.text.Text;
+
+import java.util.function.Function;
 
 import static com.malaclord.clientcommands.client.ClientCommandsClient.*;
 import static com.malaclord.clientcommands.client.util.PlayerMessage.*;
@@ -22,6 +26,11 @@ import static net.fabricmc.fabric.api.client.command.v2.ClientCommandManager.lit
 
 @SuppressWarnings("unchecked")
 public class ClientEnchantCommand {
+    private static final Function<EnchantmentMessageData, Text> ADD_SUCCESS_MESSAGE = data -> Text.translatable("commands.client.enchant.add.success", data.enchantmentRegistryEntry.value().description(), data.itemStack.getName());
+    private static final Function<EnchantmentMessageData, Text> REMOVE_SUCCESS_MESSAGE = data -> Text.translatable("commands.client.enchant.remove.success", data.enchantmentRegistryEntry.value().description(), data.itemStack.getName());
+    private static final Function<ItemStack, Text> CLEAR_SUCCESS_MESSAGE = itemStack -> Text.translatable("commands.client.enchant.clear.success",itemStack.getName());
+    private static final Function<EnchantmentMessageData, Text> REMOVE_NO_ENCHANTMENT_ERROR_MESSAGE = data -> Text.translatable("commands.client.enchant.remove.no_enchantment", data.itemStack.getName(), data.enchantmentRegistryEntry.value().description());
+
     public static void register(CommandDispatcher<FabricClientCommandSource> dispatcher, CommandRegistryAccess registryAccess) {
         dispatcher.register(literal("client")
                 .then(literal("enchant")
@@ -36,14 +45,18 @@ public class ClientEnchantCommand {
     private static int execute(CommandContext<FabricClientCommandSource> context) throws CommandSyntaxException {
         ClientPlayerEntity player = context.getSource().getPlayer();
 
-        if (isGameModeNotCreative(player)) {
-            sendNotInCreativeMessage(player);
-            return 0;
+        if (checkNotCreative(player)) return 0;
+        if (checkNotHoldingItem(player)) return 0;
+
+        var item = player.getMainHandStack();
+        var enchantment = RegistryEntryReferenceArgumentType.getEnchantment((CommandContext<ServerCommandSource>) (Object) context,"enchantment");
+
+        if (item.get(DataComponentTypes.ENCHANTMENTS) == null) {
+            item.set(DataComponentTypes.ENCHANTMENTS,ItemEnchantmentsComponent.DEFAULT);
         }
+        item.addEnchantment(enchantment,IntegerArgumentType.getInteger(context,"level"));
 
-        player.getInventory().getMainHandStack().addEnchantment(RegistryEntryReferenceArgumentType.getEnchantment((CommandContext<ServerCommandSource>) (Object) context,"enchantment"),IntegerArgumentType.getInteger(context,"level"));
-
-        success(player,"Added enchantment!",context.getInput());
+        success(player,ADD_SUCCESS_MESSAGE.apply(new EnchantmentMessageData(enchantment,player.getMainHandStack())),context.getInput());
 
         syncInventory();
 
@@ -53,14 +66,12 @@ public class ClientEnchantCommand {
     private static int executeClear(CommandContext<FabricClientCommandSource> context) {
         ClientPlayerEntity player = context.getSource().getPlayer();
 
-        if (isGameModeNotCreative(player)) {
-            sendNotInCreativeMessage(player);
-            return 0;
-        }
+        if (checkNotCreative(player)) return 0;
+        if (checkNotHoldingItem(player)) return 0;
 
         player.getInventory().getMainHandStack().set(DataComponentTypes.ENCHANTMENTS, ItemEnchantmentsComponent.DEFAULT);
 
-        success(player,"Cleared all enchantments from item!",context.getInput());
+        success(player,CLEAR_SUCCESS_MESSAGE.apply(player.getMainHandStack()),context.getInput());
 
         syncInventory();
 
@@ -70,19 +81,15 @@ public class ClientEnchantCommand {
     private static int executeRemove(CommandContext<FabricClientCommandSource> context) throws CommandSyntaxException {
         ClientPlayerEntity player = context.getSource().getPlayer();
 
-        if (isGameModeNotCreative(player)) {
-            sendNotInCreativeMessage(player);
-            return 0;
-        }
+        if (checkNotCreative(player)) return 0;
+        if (checkNotHoldingItem(player)) return 0;
 
         RegistryEntry.Reference<Enchantment> enchantment = RegistryEntryReferenceArgumentType.getEnchantment((CommandContext<ServerCommandSource>) (Object) context,"enchantment");
 
         ItemEnchantmentsComponent ec = player.getInventory().getMainHandStack().get(DataComponentTypes.ENCHANTMENTS);
 
-        assert ec != null;
-
-        if (!ec.getEnchantments().contains(enchantment)) {
-            error(player,"Item does not have enchantment!");
+        if (ec == null || !ec.getEnchantments().contains(enchantment)) {
+            error(player,REMOVE_NO_ENCHANTMENT_ERROR_MESSAGE.apply(new EnchantmentMessageData(enchantment,player.getMainHandStack())));
             return 0;
         }
 
@@ -98,11 +105,12 @@ public class ClientEnchantCommand {
 
         player.getInventory().getMainHandStack().set(DataComponentTypes.ENCHANTMENTS, builder.build());
 
-        success(player,"Removed enchantment!",context.getInput());
+        success(player,REMOVE_SUCCESS_MESSAGE.apply(new EnchantmentMessageData(enchantment,player.getMainHandStack())),context.getInput());
 
         syncInventory();
 
         return 1;
     }
 
+    private record EnchantmentMessageData(RegistryEntry<Enchantment> enchantmentRegistryEntry, ItemStack itemStack) {}
 }

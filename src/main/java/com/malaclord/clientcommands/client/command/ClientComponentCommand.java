@@ -6,6 +6,7 @@ import com.mojang.serialization.DynamicOps;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import net.minecraft.command.CommandRegistryAccess;
 import net.minecraft.component.*;
+import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NbtElement;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.registry.Registries;
@@ -16,15 +17,18 @@ import net.minecraft.util.Formatting;
 import net.minecraft.util.Identifier;
 
 import java.util.Optional;
+import java.util.function.Function;
 import java.util.stream.Stream;
 
-import static com.malaclord.clientcommands.client.ClientCommandsClient.isGameModeNotCreative;
-import static com.malaclord.clientcommands.client.ClientCommandsClient.syncInventory;
+import static com.malaclord.clientcommands.client.ClientCommandsClient.*;
 import static com.malaclord.clientcommands.client.util.PlayerMessage.*;
 import static net.fabricmc.fabric.api.client.command.v2.ClientCommandManager.argument;
 import static net.fabricmc.fabric.api.client.command.v2.ClientCommandManager.literal;
 
 public class ClientComponentCommand {
+    public static final Function<ItemStack, Text> MERGE_SUCCESS_MESSAGE = itemStack -> Text.translatable("commands.client.component.merge.success",itemStack.getName());
+    public static final Function<ItemStack, Text> SET_SUCCESS_MESSAGE = itemStack -> Text.translatable("commands.client.component.set.success",itemStack.getName());
+
     public static void register(CommandDispatcher<FabricClientCommandSource> dispatcher, CommandRegistryAccess registryAccess) {
         dispatcher.register(literal("client").then(literal("components")
                 .then(literal("merge").then(argument("components", ItemComponentsArgumentType.itemComponents(registryAccess))
@@ -33,19 +37,12 @@ public class ClientComponentCommand {
                             var item = player.getInventory().getMainHandStack();
                             var componentChanges = ItemComponentsArgumentType.getComponents(ctx,"components");
 
-                            if (isGameModeNotCreative(player)) {
-                                sendNotInCreativeMessage(player);
-                                return 0;
-                            }
-
-                            if (item.isEmpty()) {
-                                error(player,"You need to hold an item for this command to work!");
-                                return 0;
-                            }
+                            if (checkNotCreative(player)) return 0;
+                            if (checkNotHoldingItem(player)) return 0;
 
                             item.applyChanges(componentChanges);
 
-                            success(player,"Merged components!",ctx.getInput());
+                            success(player,MERGE_SUCCESS_MESSAGE.apply(item),ctx.getInput());
 
                             syncInventory();
 
@@ -58,15 +55,8 @@ public class ClientComponentCommand {
                             var item = player.getInventory().getMainHandStack();
                             var componentChanges = ItemComponentsArgumentType.getComponents(ctx,"components");
 
-                            if (isGameModeNotCreative(player)) {
-                                sendNotInCreativeMessage(player);
-                                return 0;
-                            }
-
-                            if (item.isEmpty()) {
-                                error(player,"You need to hold an item for this command to work!");
-                                return 0;
-                            }
+                            if (checkNotCreative(player)) return 0;
+                            if (checkNotHoldingItem(player)) return 0;
 
                             var builder = ComponentChanges.builder();
 
@@ -78,7 +68,7 @@ public class ClientComponentCommand {
 
                             item.applyChanges(componentChanges);
 
-                            success(player,"Set components!",ctx.getInput());
+                            success(player,SET_SUCCESS_MESSAGE.apply(item),ctx.getInput());
 
                             syncInventory();
 
@@ -90,10 +80,7 @@ public class ClientComponentCommand {
                             var player = ctx.getSource().getPlayer();
                             var item = player.getInventory().getMainHandStack();
 
-                            if (item.isEmpty()) {
-                                error(player,"You need to hold an item for this command to work!");
-                                return 0;
-                            }
+                            if (checkNotHoldingItem(player)) return 0;
 
                             MutableText text = Text.empty();
 

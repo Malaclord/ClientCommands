@@ -11,6 +11,9 @@ import net.minecraft.world.GameMode;
 
 import java.util.Objects;
 
+import static com.malaclord.clientcommands.client.util.PlayerMessage.sendNotHoldingItemMessage;
+import static com.malaclord.clientcommands.client.util.PlayerMessage.sendNotInCreativeMessage;
+
 public class ClientCommandsClient implements ClientModInitializer {
     /**
      * Runs the mod initializer on the client environment.
@@ -48,5 +51,23 @@ public class ClientCommandsClient implements ClientModInitializer {
 
     public static boolean isGameModeNotCreative(ClientPlayerEntity player) {
         return Objects.requireNonNull(Objects.requireNonNull(MinecraftClient.getInstance().getNetworkHandler()).getPlayerListEntry(player.getUuid())).getGameMode() != GameMode.CREATIVE;
+    }
+
+    public static boolean checkNotCreative(ClientPlayerEntity player) {
+        if (isGameModeNotCreative(player)) {
+            sendNotInCreativeMessage(player);
+            return true;
+        }
+
+        return false;
+    }
+
+    public static boolean checkNotHoldingItem(ClientPlayerEntity player) {
+        if (player.getMainHandStack().isEmpty()) {
+            sendNotHoldingItemMessage(player);
+            return true;
+        }
+
+        return false;
     }
 }

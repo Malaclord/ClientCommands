@@ -29,10 +29,7 @@ public class ClientPlayerHeadCommand {
     private static int execute(CommandContext<FabricClientCommandSource> ctx) {
         var player = ctx.getSource().getPlayer();
 
-        if (isGameModeNotCreative(player)) {
-            sendNotInCreativeMessage(player);
-            return 0;
-        }
+        if (checkNotCreative(player)) return 0;
 
         ItemStack head = new ItemStack(Items.PLAYER_HEAD);
 
@@ -43,11 +40,7 @@ public class ClientPlayerHeadCommand {
 
         head.set(DataComponentTypes.PROFILE, new ProfileComponent(name, Optional.empty(), new PropertyMap()));
 
-        if (player.getInventory().getEmptySlot() == -1 && player.getInventory().getOccupiedSlotWithRoomForStack(head) == -1) {
-            warn(player,"You don't have space in your inventory for this item!");
-        } else {
-            success(player, "Gave you the head of " + name.get() + "!");
-        }
+        sendNoSpaceOrSuccess(player,head,ClientGiveCommand.SUCCESS_MESSAGE.apply(head),ctx.getInput());
 
         player.giveItemStack(head);
 

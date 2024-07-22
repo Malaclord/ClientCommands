@@ -28,15 +28,27 @@ import net.minecraft.util.Identifier;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Function;
 
-import static com.malaclord.clientcommands.client.ClientCommandsClient.isGameModeNotCreative;
-import static com.malaclord.clientcommands.client.ClientCommandsClient.syncInventory;
+import static com.malaclord.clientcommands.client.ClientCommandsClient.*;
 import static com.malaclord.clientcommands.client.util.PlayerMessage.*;
 import static net.fabricmc.fabric.api.client.command.v2.ClientCommandManager.argument;
 import static net.fabricmc.fabric.api.client.command.v2.ClientCommandManager.literal;
 
 @SuppressWarnings("unchecked")
 public class ClientAttributeModifierCommand {
+    private static final Function<MessageData, Text> ADD_SUCCESS_MESSAGE = data -> Text.translatable("commands.client.modifier.add.success",data.id.toString(),data.itemStack.getName());
+    private static final Function<MessageData, Text> REMOVE_SUCCESS_MESSAGE = data -> Text.translatable("commands.client.modifier.remove.success",data.id.toString(),data.itemStack.getName());
+    private static final Function<MessageData, Text> MODIFY_SUCCESS_MESSAGE = data -> Text.translatable("commands.client.modifier.modify.success",data.id.toString(),data.itemStack.getName());
+    private static final Function<ItemStack, Text> CLEAR_SUCCESS_MESSAGE = itemStack -> Text.translatable("commands.client.modifier.clear.success",itemStack.getName());
+    private static final Function<ItemStack, Text> LIST_TITLE = itemStack -> Text.translatable("commands.client.modifier.list.title",itemStack.getName());
+    private static final Function<ItemStack, Text> LIST_NO_MODIFIERS_MESSAGE = itemStack -> Text.translatable("commands.client.modifier.list.no_modifiers",itemStack.getName());
+    private static final Text LIST_REMOVE_TOOLTIP = Text.translatable("commands.client.modifier.list.remove_tooltip");
+    private static final Text LIST_MODIFY_TOOLTIP = Text.translatable("commands.client.modifier.list.modify_tooltip");
+    private static final Text LIST_COPY_ID_TOOLTIP = Text.translatable("commands.client.modifier.list.copy_id_tooltip");
+    private static final Function<MessageData, Text> ID_NOT_FOUND = data -> Text.translatable("commands.client.modifier.id_not_found",data.id.toString(),data.itemStack.getName());
+
+
     public static void register(CommandDispatcher<FabricClientCommandSource> dispatcher, CommandRegistryAccess registryAccess) {
         dispatcher.register(literal("client").then(literal("modifier")
                 .then(literal("add").then(
@@ -94,19 +106,13 @@ public class ClientAttributeModifierCommand {
     private static int executeClear(CommandContext<FabricClientCommandSource> ctx) {
         var player = ctx.getSource().getPlayer();
         var item = player.getInventory().getMainHandStack();
-        if (isGameModeNotCreative(player)) {
-            sendNotInCreativeMessage(player);
-            return 0;
-        }
 
-        if (item.isEmpty()) {
-            error(player,"You need hold an item to use this command!");
-            return 0;
-        }
+        if (checkNotCreative(player)) return 0;
+        if (checkNotHoldingItem(player)) return 0;
 
         item.set(DataComponentTypes.ATTRIBUTE_MODIFIERS,AttributeModifiersComponent.DEFAULT);
 
-        success(player, "Cleared attribute modifiers of item!", ctx.getInput());
+        success(player, CLEAR_SUCCESS_MESSAGE.apply(item), ctx.getInput());
 
         syncInventory();
 
@@ -118,21 +124,20 @@ public class ClientAttributeModifierCommand {
         var item = player.getInventory().getMainHandStack();
         var id = IdentifierArgumentType.getIdentifier((CommandContext<ServerCommandSource>) (Object) ctx,"id");
 
-        if (isGameModeNotCreative(player)) {
-            sendNotInCreativeMessage(player);
-            return 0;
-        }
+        if (checkNotCreative(player)) return 0;
+        if (checkNotHoldingItem(player)) return 0;
 
         var modifiersComponent = item.get(DataComponentTypes.ATTRIBUTE_MODIFIERS);
-
-        if (item.isEmpty()) {
-            error(player,"You need hold an item to use this command!");
-            return 0;
-        }
 
         if (modifiersComponent == null) return 0;
 
         var modifiers = modifiersComponent.modifiers();
+
+        Identifier finalId = id;
+        if (modifiers.stream().noneMatch(m -> m.modifier().id().equals(finalId))) {
+            error(player, ID_NOT_FOUND.apply(new MessageData(id,item)));
+            return 0;
+        }
 
         var builder = AttributeModifiersComponent.builder();
 
@@ -159,7 +164,7 @@ public class ClientAttributeModifierCommand {
 
         item.set(DataComponentTypes.ATTRIBUTE_MODIFIERS,builder.build());
 
-        success(player,"Modified attribute modifier!", ctx.getInput());
+        success(player,MODIFY_SUCCESS_MESSAGE.apply(new MessageData(id,item)), ctx.getInput());
 
         syncInventory();
 
@@ -179,15 +184,8 @@ public class ClientAttributeModifierCommand {
 
         }
 
-        if (isGameModeNotCreative(player)) {
-            sendNotInCreativeMessage(player);
-            return 0;
-        }
-
-        if (item.isEmpty()) {
-            error(player,"You need hold an item to use this command!");
-            return 0;
-        }
+        if (checkNotCreative(player)) return 0;
+        if (checkNotHoldingItem(player)) return 0;
 
         var modifiersComponent = item.get(DataComponentTypes.ATTRIBUTE_MODIFIERS);
 
@@ -195,13 +193,13 @@ public class ClientAttributeModifierCommand {
 
 
         var allIds = modifiersComponent.modifiers().stream().map(m -> m.modifier().id().toString()).toList();
-        var newId = generateUniqueString(allIds,id == null ? Identifier.of(player.getNameForScoreboard().toLowerCase(),Identifier.of(args.attribute.getIdAsString()).getPath()).toString() : id);
+        var newId = Identifier.of(generateUniqueString(allIds,id == null ? Identifier.of(player.getNameForScoreboard().toLowerCase(),Identifier.of(args.attribute.getIdAsString()).getPath()).toString() : id));
 
-        var modifier = new EntityAttributeModifier(Identifier.of(newId),args.value,args.operation);
+        var modifier = new EntityAttributeModifier(newId,args.value,args.operation);
 
         item.set(DataComponentTypes.ATTRIBUTE_MODIFIERS, modifiersComponent.with(args.attribute,modifier,args.slot));
 
-        success(player, "Added new attribute modifier!", ctx.getInput());
+        success(player, ADD_SUCCESS_MESSAGE.apply(new MessageData(newId,item)), ctx.getInput());
 
         syncInventory();
         return 1;
@@ -213,15 +211,8 @@ public class ClientAttributeModifierCommand {
         var item = player.getInventory().getMainHandStack();
         var id = IdentifierArgumentType.getIdentifier((CommandContext<ServerCommandSource>) (Object) ctx,"id");
 
-        if (isGameModeNotCreative(player)) {
-            sendNotInCreativeMessage(player);
-            return 0;
-        }
-
-        if (item.isEmpty()) {
-            error(player,"You need hold an item to use this command!");
-            return 0;
-        }
+        if (checkNotCreative(player)) return 0;
+        if (checkNotHoldingItem(player)) return 0;
 
         var modifiersComponent = item.get(DataComponentTypes.ATTRIBUTE_MODIFIERS);
 
@@ -231,6 +222,11 @@ public class ClientAttributeModifierCommand {
 
         var builder = AttributeModifiersComponent.builder();
 
+        if (modifiers.stream().noneMatch(m -> m.modifier().id().equals(id))) {
+            error(player, ID_NOT_FOUND.apply(new MessageData(id,item)));
+            return 0;
+        }
+
         for (var modifier : modifiers) {
             if (modifier.modifier().id().equals(id)) continue;
             builder.add(modifier.attribute(),modifier.modifier(),modifier.slot());
@@ -238,7 +234,7 @@ public class ClientAttributeModifierCommand {
 
         item.set(DataComponentTypes.ATTRIBUTE_MODIFIERS, builder.build());
 
-        success(player,"Removed attribute modifier!", ctx.getInput());
+        success(player,REMOVE_SUCCESS_MESSAGE.apply(new MessageData(id,item)), ctx.getInput());
         /*if (!modifiersComponent.modifiers().isEmpty())
             player.sendMessage(
                     Text.literal("Remaining modifiers:\n").append(
@@ -257,26 +253,18 @@ public class ClientAttributeModifierCommand {
         ClientPlayerEntity player = ctx.getSource().getPlayer();
         ItemStack item = player.getInventory().getMainHandStack();
 
-        if (item.isEmpty()) {
-            error(player,"You need to hold an item for this command to work!");
-            return 0;
-        }
+        if (checkNotHoldingItem(player)) return 0;
 
         var modifiersComponent = item.getComponents().get(DataComponentTypes.ATTRIBUTE_MODIFIERS);
-
-        if (item.isEmpty()) {
-            error(player,"You need hold an item to use this command!");
-            return 0;
-        }
 
         if (modifiersComponent == null) return 0;
 
         if (modifiersComponent.modifiers().isEmpty()) {
-            player.sendMessage(item.getName().copy().append(" does not have any attribute modifiers."));
+            player.sendMessage(LIST_NO_MODIFIERS_MESSAGE.apply(item));
             return 1;
         }
 
-        MutableText text = Text.literal("Attribute modifiers of ").append(item.getName()).append(":\n");
+        MutableText text = LIST_TITLE.apply(item).copy().append("\n");
 
         text.append(getList(modifiersComponent));
 
@@ -298,7 +286,7 @@ public class ClientAttributeModifierCommand {
             text.append(
                     Text.literal("[-]")
                             .setStyle(Style.EMPTY
-                                    .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, Text.literal("Remove").withColor(PlayerMessage.ERROR_COLOR)))
+                                    .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, LIST_REMOVE_TOOLTIP.copy().withColor(PlayerMessage.ERROR_COLOR)))
                                     .withClickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, "/client modifier remove "+id))
                             ).withColor(PlayerMessage.ERROR_COLOR)
             ).append(" ");
@@ -306,7 +294,7 @@ public class ClientAttributeModifierCommand {
             text.append(
                     Text.literal("[\uD83D\uDD27]")
                             .setStyle(Style.EMPTY
-                                    .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, Text.literal("Modify").withColor(PlayerMessage.SUCCESS_COLOR)))
+                                    .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, LIST_MODIFY_TOOLTIP.copy().withColor(PlayerMessage.SUCCESS_COLOR)))
                                     .withClickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, "/client modifier modify "+id))
                             ).withColor(PlayerMessage.SUCCESS_COLOR)
             ).append(" ");
@@ -314,7 +302,7 @@ public class ClientAttributeModifierCommand {
             text.append(
                     Text.literal((modifier.modifier().id().toString()) + " ")
                             .setStyle(Style.EMPTY
-                                    .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,Text.literal("Click to copy")))
+                                    .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,LIST_COPY_ID_TOOLTIP.copy()))
                                     .withClickEvent(new ClickEvent(ClickEvent.Action.COPY_TO_CLIPBOARD, id))
                             )
             );
@@ -327,18 +315,6 @@ public class ClientAttributeModifierCommand {
         }
 
         return text;
-    }
-
-    public static String truncateWithEllipsis(String input, int maxLength) {
-        if (input == null || input.length() <= maxLength) {
-            return input;
-        }
-
-        if (maxLength <= 3) {
-            return "...".substring(0, maxLength); // If maxLength is very small, return a truncated ellipsis
-        }
-
-        return input.substring(0, maxLength - 3) + "...";
     }
 
     private static CommandArguments getArguments(CommandContext<FabricClientCommandSource> ctx) throws CommandSyntaxException {
@@ -358,5 +334,9 @@ public class ClientAttributeModifierCommand {
         ATTRIBUTE,
         SLOT,
         ID
+    }
+
+    private record MessageData(Identifier id, ItemStack itemStack) {
+
     }
 }

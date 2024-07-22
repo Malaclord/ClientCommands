@@ -25,11 +25,13 @@ import net.minecraft.potion.Potion;
 import net.minecraft.registry.RegistryKeys;
 import net.minecraft.registry.entry.RegistryEntry;
 import net.minecraft.server.command.ServerCommandSource;
+import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.function.Function;
 
 import static com.malaclord.clientcommands.client.ClientCommandsClient.*;
 import static com.malaclord.clientcommands.client.util.PlayerMessage.*;
@@ -37,6 +39,16 @@ import static net.fabricmc.fabric.api.client.command.v2.ClientCommandManager.*;
 
 @SuppressWarnings("unchecked")
 public class ClientPotionCommand {
+    private static final Function<Potion, Text> POTION_NAME = potion -> Text.translatable("commands.client.potion.potion_name",Text.translatable(potion.getEffects().getFirst().getTranslationKey()));
+    private static final Function<Potion, Text> SPLASH_POTION_NAME = potion -> Text.translatable("commands.client.potion.splash_potion_name",Text.translatable(potion.getEffects().getFirst().getTranslationKey()));
+    private static final Function<Potion, Text> LINGERING_POTION_NAME = potion -> Text.translatable("commands.client.potion.lingering_potion_name",Text.translatable(potion.getEffects().getFirst().getTranslationKey()));
+    private static final Function<ItemStack, Text> CREATE_SUCCESS_MESSAGE = itemStack -> Text.translatable("commands.client.potion.create.success", itemStack.getName());
+    private static final Function<ItemStack, Text> MODIFY_SUCCESS_MESSAGE = itemStack -> Text.translatable("commands.client.potion.modify.success", itemStack.getName());
+    private static final Text NOT_HOLDING_POTION_MESSAGE = Text.translatable("commands.client.potion.not_holding_potion");
+    private static final Function<MessageData, Text> MODIFY_REMOVE_EFFECT_SUCCESS_MESSAGE = data -> Text.translatable("commands.client.potion.modify.effect.remove.success", data.effect.value().getName(), data.itemStack.getName());
+    private static final Function<MessageData, Text> MODIFY_REMOVE_EFFECT_NO_EFFECT_MESSAGE = data -> Text.translatable("commands.client.potion.modify.effect.remove.no_effect", data.itemStack.getName() ,data.effect.value().getName());
+    private static final Function<MessageData, Text> MODIFY_SET_EFFECT_SUCCESS_MESSAGE = data -> Text.translatable("commands.client.potion.modify.effect.set.success", data.effect.value().getName(), data.itemStack.getName(), data.amplifier, data.duration);
+
     public static void register(CommandDispatcher<FabricClientCommandSource> dispatcher, CommandRegistryAccess registryAccess) {
         dispatcher.register(literal("client")
                 .then(literal("potion")
@@ -114,10 +126,7 @@ public class ClientPotionCommand {
         ClientPlayerEntity player;
 
         if ((player = MinecraftClient.getInstance().player) == null) return 0;
-        if (isGameModeNotCreative(player)) {
-            sendNotInCreativeMessage(player);
-            return 0;
-        }
+        if (checkNotCreative(player)) return 0;
 
         StatusEffect effect = RegistryEntryReferenceArgumentType.getStatusEffect((CommandContext<ServerCommandSource>) (Object) context,"effect").value();
         PotionTypes type = PotionTypeArgumentType.getPotionType(context,"type");
@@ -129,10 +138,12 @@ public class ClientPotionCommand {
 
         Item item;
 
+        Text name;
+
         switch (type) {
-            case LINGER -> item = Items.LINGERING_POTION;
-            case SPLASH -> item = Items.SPLASH_POTION;
-            default -> item = Items.POTION;
+            case LINGER -> { item = Items.LINGERING_POTION; name = LINGERING_POTION_NAME.apply(potion);}
+            case SPLASH -> { item = Items.SPLASH_POTION; name = SPLASH_POTION_NAME.apply(potion);}
+            default -> { item = Items.POTION; name = POTION_NAME.apply(potion);}
         }
 
         ItemStack potionStack = new ItemStack(item);
@@ -144,15 +155,11 @@ public class ClientPotionCommand {
         }
 
         potionStack.set(DataComponentTypes.POTION_CONTENTS,pcc);
-        potionStack.set(DataComponentTypes.ITEM_NAME, potion.getEffects().getFirst().getEffectType().value().getName());
+        potionStack.set(DataComponentTypes.ITEM_NAME, name);
 
         setColor(potionStack,potion.getEffects().getFirst().getEffectType().value().getColor());
 
-        if (player.getInventory().getEmptySlot() == -1 && player.getInventory().getOccupiedSlotWithRoomForStack(potionStack) == -1) {
-            warn(player,"You don't have space in your inventory for this item!");
-        } else {
-            success(player,"Created potion!",context.getInput());
-        }
+        sendNoSpaceOrSuccess(player,potionStack, CREATE_SUCCESS_MESSAGE.apply(potionStack),context.getInput());
 
         player.giveItemStack(potionStack);
 
@@ -165,10 +172,7 @@ public class ClientPotionCommand {
         ClientPlayerEntity player;
 
         if ((player = MinecraftClient.getInstance().player) == null) return 0;
-        if (isGameModeNotCreative(player)) {
-            sendNotInCreativeMessage(player);
-            return 0;
-        }
+        if (checkNotCreative(player)) return 0;
 
         var effect = RegistryEntryReferenceArgumentType.getStatusEffect((CommandContext<ServerCommandSource>) (Object) context,"effect");
         var args = getArguments(context);
@@ -176,7 +180,7 @@ public class ClientPotionCommand {
         ItemStack potion = heldPotion(player);
 
         if (potion == null) {
-            error(player,"You need to hold a potion for this command to work!");
+            error(player,NOT_HOLDING_POTION_MESSAGE);
             return 0;
         }
 
@@ -185,12 +189,16 @@ public class ClientPotionCommand {
         if (pcc == null) return 0;
 
         var customEffect = pcc.customEffects().stream().filter(p ->
-            p.getEffectType().value() == effect.value()
+            p.getEffectType() == effect
         ).findFirst();
 
         customEffect.ifPresent(statusEffectInstance -> pcc.customEffects().remove(statusEffectInstance));
 
         potion.set(DataComponentTypes.POTION_CONTENTS,pcc.with(new StatusEffectInstance(effect,args.duration,args.amplifier,false,args.showParticles,true)));
+
+        success(player,MODIFY_SET_EFFECT_SUCCESS_MESSAGE.apply(new MessageData(potion,effect, args.amplifier, args.duration)),context.getInput());
+
+        syncInventory();
 
         return 1;
     }
@@ -217,14 +225,15 @@ public class ClientPotionCommand {
         ItemStack potion = heldPotion(player);
 
         if (potion == null) {
-            error(player,"You need to hold a potion for this command to work!");
+            error(player,NOT_HOLDING_POTION_MESSAGE);
             return 0;
         }
 
         ItemStack newPotionStack = potion.copyComponentsToNewStack(item,potion.getCount());
 
-
         player.getInventory().setStack(player.getInventory().getSlotWithStack(potion),newPotionStack);
+
+        success(player,MODIFY_SUCCESS_MESSAGE.apply(potion),context.getInput());
 
         syncInventory();
 
@@ -242,7 +251,7 @@ public class ClientPotionCommand {
         ItemStack potion = heldPotion(player);
 
         if (potion == null) {
-            error(player,"You need to hold a potion for this command to work!");
+            error(player,NOT_HOLDING_POTION_MESSAGE);
             return 0;
         }
 
@@ -255,6 +264,8 @@ public class ClientPotionCommand {
         else colorInt = color.getColorValue();
 
         setColor(potion,colorInt);
+
+        success(player,MODIFY_SUCCESS_MESSAGE.apply(potion),context.getInput());
 
         syncInventory();
 
@@ -272,7 +283,7 @@ public class ClientPotionCommand {
         ItemStack potion = heldPotion(player);
 
         if (potion == null) {
-            error(player,"You need to hold a potion for this command to work!");
+            error(player,NOT_HOLDING_POTION_MESSAGE);
             return 0;
         }
 
@@ -289,6 +300,8 @@ public class ClientPotionCommand {
 
         setColor(potion,colorInt);
 
+        success(player,MODIFY_SUCCESS_MESSAGE.apply(potion),context.getInput());
+
         syncInventory();
 
         return 1;
@@ -298,17 +311,14 @@ public class ClientPotionCommand {
     private static int executeRemoveEffect(CommandContext<FabricClientCommandSource> context) throws CommandSyntaxException {
         ClientPlayerEntity player = context.getSource().getPlayer();
 
-        if (isGameModeNotCreative(player)) {
-            sendNotInCreativeMessage(player);
-            return 0;
-        }
+        if (checkNotCreative(player)) return 0;
 
-        StatusEffect effect = RegistryEntryReferenceArgumentType.getStatusEffect((CommandContext<ServerCommandSource>) (Object) context,"effect").value();
+        RegistryEntry.Reference<StatusEffect> effect = RegistryEntryReferenceArgumentType.getStatusEffect((CommandContext<ServerCommandSource>) (Object) context,"effect");
 
         ItemStack potion = heldPotion(player);
 
         if (potion == null) {
-            error(player,"You need to hold a potion for this command to work!");
+            error(player,NOT_HOLDING_POTION_MESSAGE);
             return 0;
         }
 
@@ -316,13 +326,22 @@ public class ClientPotionCommand {
 
         if (pcc == null) return 0;
 
+        if (pcc.customEffects().stream().noneMatch(p -> p.getEffectType() == effect)) {
+            error(player,MODIFY_REMOVE_EFFECT_NO_EFFECT_MESSAGE.apply(new MessageData(potion,effect,0, 0)));
+            return 0;
+        }
+
         var customEffect = pcc.customEffects().stream().filter(p ->
-                p.getEffectType().value() == effect
+                p.getEffectType() == effect
         ).findFirst();
 
         if (customEffect.isEmpty()) return 0;
 
         pcc.customEffects().remove(customEffect.get());
+
+        success(player,MODIFY_REMOVE_EFFECT_SUCCESS_MESSAGE.apply(new MessageData(potion,effect,0, 0)),context.getInput());
+
+        syncInventory();
 
         return 1;
     }
@@ -374,4 +393,5 @@ public class ClientPotionCommand {
     }
 
     private record PotionCommandArguments(int amplifier, int duration, boolean showParticles) {}
+    private record MessageData(ItemStack itemStack, RegistryEntry<StatusEffect> effect, double amplifier, int duration) {}
 }

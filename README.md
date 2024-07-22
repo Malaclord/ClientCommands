@@ -18,6 +18,9 @@ All commands are subcommands of `/client`
 |`modifier remove <uuid>`|**Creative only**<br>Remove attribute modifier from held item.|`modifier remove bae7d9d5-6221-45e3-9d14-4956229557f2`|
 |`modifier modify <uuid> <attribute\|operation\|value\|slot\|> <value>`|**Creative only**<br>Lists attribute modifiers on player's currently held item.|`modifier modify bae7d9d5-6221-45e3-9d14-4956229557f2 slot hand`|
 
+## Additional features
+- Long (32K) character limit on chat messages
+
 ## Planned tools / features
 - [x] Give
 - [x] Rename

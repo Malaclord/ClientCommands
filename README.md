@@ -1,6 +1,6 @@
 # ClientCommands
 
-Adds a couple client utilities in the form of commands. All commands that give you / modifiy your items are **Creative Only**, so while they do work on servers they can't be used to cheat.
+Adds a couple client utilities in the form of commands.
 
 ## Curent tools
 
@@ -20,6 +20,9 @@ All commands are subcommands of `/client`
 
 ## Additional features
 - Long (32K) character limit on chat messages
+
+## Translators
+- Latvian: @Foxytisy
 
 ## Planned tools / features
 - [x] Give

@@ -25,4 +25,4 @@ All commands are subcommands of `/client`
 - [x] Modifiers
 - [x] Playerhead
 - [x] Potions
-- [ ] Longer NBT length (not sure how yet)
+- [x] Longer NBT length (long chat limit)

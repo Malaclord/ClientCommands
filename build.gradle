@@ -1,12 +1,6 @@
 plugins {
-<<<<<<< HEAD
     id "com.modrinth.minotaur" version "2.+"
     id 'fabric-loom' version '1.6-SNAPSHOT'
-=======
-    id 'fabric-loom' version '1.2-SNAPSHOT'
-    id 'maven-publish'
-    id 'com.modrinth.minotaur' version '2.+'
->>>>>>> 89413269367ff080388dc3a7e5312d3eac5b2b40
 }
 
 version = project.mod_version

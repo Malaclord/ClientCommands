@@ -18,7 +18,6 @@ import net.minecraft.util.Identifier;
 
 import java.util.Optional;
 import java.util.function.Function;
-import java.util.stream.Stream;
 
 import static com.malaclord.clientcommands.client.ClientCommandsClient.*;
 import static com.malaclord.clientcommands.client.util.PlayerMessage.*;
@@ -86,7 +85,7 @@ public class ClientComponentCommand {
 
                             text.append("[");
 
-                            var componentsText = componentsAsString(registryAccess,item.getComponents());
+                            var componentsText = componentsAsText(registryAccess,item.getComponents());
 
                             text.append(componentsText);
 
@@ -103,7 +102,7 @@ public class ClientComponentCommand {
     }
 
 
-    private static MutableText componentsAsString(RegistryWrapper.WrapperLookup registries, ComponentMap components) {
+    private static MutableText componentsAsText(RegistryWrapper.WrapperLookup registries, ComponentMap components) {
         DynamicOps<NbtElement> dynamicOps = registries.getOps(NbtOps.INSTANCE);
 
         MutableText text = Text.empty();
@@ -111,9 +110,7 @@ public class ClientComponentCommand {
         components.stream().forEach((entry) -> {
             ComponentType<?> componentType = entry.type();
             Identifier identifier = Registries.DATA_COMPONENT_TYPE.getId(componentType);
-            if (identifier == null) {
-                Stream.empty();
-            } else {
+            if (identifier != null) {
                 Optional<?> optional = Optional.of(entry.value());
                 Component<?> component = Component.of(componentType, optional.get());
                 component.encode(dynamicOps).result().ifPresent((value) -> {

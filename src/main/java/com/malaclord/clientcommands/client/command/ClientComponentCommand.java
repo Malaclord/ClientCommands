@@ -18,7 +18,6 @@ import net.minecraft.util.Identifier;
 
 import java.util.Optional;
 import java.util.function.Function;
-import java.util.stream.Stream;
 
 import static com.malaclord.clientcommands.client.ClientCommandsClient.*;
 import static com.malaclord.clientcommands.client.util.PlayerMessage.*;

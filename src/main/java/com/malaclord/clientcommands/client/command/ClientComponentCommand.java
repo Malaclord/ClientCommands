@@ -86,7 +86,7 @@ public class ClientComponentCommand {
 
                             text.append("[");
 
-                            var componentsText = componentsAsString(registryAccess,item.getComponents());
+                            var componentsText = componentsAsText(registryAccess,item.getComponents());
 
                             text.append(componentsText);
 
@@ -103,7 +103,7 @@ public class ClientComponentCommand {
     }
 
 
-    private static MutableText componentsAsString(RegistryWrapper.WrapperLookup registries, ComponentMap components) {
+    private static MutableText componentsAsText(RegistryWrapper.WrapperLookup registries, ComponentMap components) {
         DynamicOps<NbtElement> dynamicOps = registries.getOps(NbtOps.INSTANCE);
 
         MutableText text = Text.empty();

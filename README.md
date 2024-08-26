@@ -17,6 +17,9 @@ All commands are subcommands of `/client`
 |`modifier add <attribute> <operation> <value> <slot>`|**Creative only**<br>Add attribute modifier to held item.|`modifier add minecraft:generic.armor_toughness add_multiplied_base 2 armor`|
 |`modifier remove <uuid>`|**Creative only**<br>Remove attribute modifier from held item.|`modifier remove bae7d9d5-6221-45e3-9d14-4956229557f2`|
 |`modifier modify <uuid> <attribute\|operation\|value\|slot\|> <value>`|**Creative only**<br>Lists attribute modifiers on player's currently held item.|`modifier modify bae7d9d5-6221-45e3-9d14-4956229557f2 slot hand`|
+|`components set`|**Creative Only**<br>Set item components for held item.|`components set [food={saturation:1,nutrition:10}]`|
+|`components merge`|**Creative only**<br>Merge item components into held item.|`components merge [unbreakable={}]`|
+|`components get`|Get item components of held item.|`components get`|
 
 ## Additional features
 - Long (32K) character limit on chat messages

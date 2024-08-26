@@ -111,9 +111,7 @@ public class ClientComponentCommand {
         components.stream().forEach((entry) -> {
             ComponentType<?> componentType = entry.type();
             Identifier identifier = Registries.DATA_COMPONENT_TYPE.getId(componentType);
-            if (identifier == null) {
-                Stream.empty();
-            } else {
+            if (identifier != null) {
                 Optional<?> optional = Optional.of(entry.value());
                 Component<?> component = Component.of(componentType, optional.get());
                 component.encode(dynamicOps).result().ifPresent((value) -> {

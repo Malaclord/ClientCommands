@@ -26,7 +26,7 @@ public abstract class ChatInputSuggestorMixin implements IChatInputSuggestorMixe
 
     @Inject(method = "renderMessages", at = @At("HEAD"))
     private void refreshInjected(CallbackInfo ci) {
-        ((IChatScreenMixedin) owner).noChatLimit$setMessagesNum(messages.toArray().length);
+        if (owner instanceof IChatScreenMixedin) ((IChatScreenMixedin) owner).noChatLimit$setMessagesNum(messages.toArray().length);
     }
 
     @Override

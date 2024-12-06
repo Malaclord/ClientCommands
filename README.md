@@ -14,6 +14,11 @@ All commands are subcommands of `/client`
 |`enchant clear`|**Creative only**<br>Clears all enchantments on held item.|`enchant clear`|
 |`enchant remove <enchantment>`|**Creative only**<br>Removes enchantment from player's currently held item.|`enchant remove minecraft:depth_strider`|
 |`modifier list`|Lists attribute modifiers on player's currently held item.|`modifier list`|
+|`potion create <type> <effect> [<amplifier>] [infinite\|<duration>] [<hideParticles>]`|**Creative only**<br>Creates potion item of type (normal/splash/linger) with specified effect.|`potion create linger minecraft:blindness 0 infinite`|
+|`potion modify color (<color>\|hex) [<colorHex>]`|**Creative only**<br>Modify the color of the held potion to one of the 16 Minecraft colors or to a custom hexadecimal color|`potion modify color hex ffaa00`|
+|`potion modify effect set <effect> <amplifier> (infinite\|<duration>) [<hideParticles>]`|**Creative only**<br>Set the details of a potion effect in the held potion.|`potion modify effect set minecraft:glowing 0 100`|
+|`potion modify effect remove <effect>`|**Creative only**<br>Completely removes potion effect from held potion.|`potion modify effect remove minecraft:haste`|
+|`potion modify type <type>`|**Creative only**<br>Changes the potion's type (normal/splash/linger)|`potion modify type linger`|
 |`modifier add <attribute> <operation> <value> <slot>`|**Creative only**<br>Add attribute modifier to held item.|`modifier add minecraft:generic.armor_toughness add_multiplied_base 2 armor`|
 |`modifier remove <uuid>`|**Creative only**<br>Remove attribute modifier from held item.|`modifier remove bae7d9d5-6221-45e3-9d14-4956229557f2`|
 |`modifier modify <uuid> <attribute\|operation\|value\|slot\|> <value>`|**Creative only**<br>Lists attribute modifiers on player's currently held item.|`modifier modify bae7d9d5-6221-45e3-9d14-4956229557f2 slot hand`|

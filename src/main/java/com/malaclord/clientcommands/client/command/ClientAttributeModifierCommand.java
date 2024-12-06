@@ -260,7 +260,7 @@ public class ClientAttributeModifierCommand {
         if (modifiersComponent == null) return 0;
 
         if (modifiersComponent.modifiers().isEmpty()) {
-            player.sendMessage(LIST_NO_MODIFIERS_MESSAGE.apply(item));
+            player.sendMessage(LIST_NO_MODIFIERS_MESSAGE.apply(item),false);
             return 1;
         }
 
@@ -268,7 +268,7 @@ public class ClientAttributeModifierCommand {
 
         text.append(getList(modifiersComponent));
 
-        player.sendMessage(text);
+        player.sendMessage(text,false);
 
         return 1;
     }

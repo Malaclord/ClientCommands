@@ -134,7 +134,7 @@ public class ClientPotionCommand {
 
         StatusEffectInstance effectInstance = new StatusEffectInstance(RegistryEntry.of(effect),args.duration,args.amplifier,false,args.showParticles);
 
-        Potion potion = new Potion(effectInstance);
+        Potion potion = new Potion(effectInstance.getTranslationKey(),effectInstance);
 
         Item item;
 
@@ -358,7 +358,13 @@ public class ClientPotionCommand {
 
     private static void setColor(ItemStack potion, int color) {
         PotionContentsComponent pcc;
-        pcc = new PotionContentsComponent(Optional.empty(),Optional.of(color), Objects.requireNonNull(potion.get(DataComponentTypes.POTION_CONTENTS)).customEffects());
+        pcc = new PotionContentsComponent(
+                Optional.empty(),
+                Optional.of(color),
+                Objects.requireNonNull(potion.get(DataComponentTypes.POTION_CONTENTS)).customEffects(),
+                Optional.empty()
+        );
+
 
         potion.set(DataComponentTypes.POTION_CONTENTS,pcc);
 

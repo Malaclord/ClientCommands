@@ -38,7 +38,21 @@ public class ClientRenameCommand {
                     syncInventory();
 
                     return 1;
-                })))).then(argument("name", StringArgumentType.string()).executes((context -> {
+                })).then(argument("customName", BoolArgumentType.bool()).executes((context -> {
+                    var player = context.getSource().getPlayer();
+                    if (checkNotCreative(player)) return 0;
+                    if (checkNotHoldingItem(player)) return 0;
+
+                    player.getMainHandStack().set(BoolArgumentType.getBool(context, "customName") ? DataComponentTypes.CUSTOM_NAME : DataComponentTypes.ITEM_NAME,
+                            TextArgumentType.getTextArgument((CommandContext<ServerCommandSource>) (Object) context, "name"));
+
+                    success(player,SUCCESS_MESSAGE.apply(player.getMainHandStack()));
+
+                    syncInventory();
+
+                    return 1;})))
+
+                )).then(argument("name", StringArgumentType.string()).executes((context -> {
                     var player = context.getSource().getPlayer();
                     if (checkNotCreative(player)) return 0;
                     if (checkNotHoldingItem(player)) return 0;

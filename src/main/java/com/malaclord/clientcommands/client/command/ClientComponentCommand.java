@@ -91,7 +91,7 @@ public class ClientComponentCommand {
 
                             text.append("]");
 
-                            player.sendMessage(text);
+                            player.sendMessage(text,false);
 
                             syncInventory();
 

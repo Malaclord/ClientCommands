@@ -16,7 +16,7 @@ public class PlayerMessage {
     public static final int SUCCESS_COLOR = 0xDAF7A6;
 
     private static void send(ClientPlayerEntity player, Text message) {
-        player.sendMessage(message);
+        player.sendMessage(message,false);
     }
 
     public static void info(ClientPlayerEntity player, String message) {

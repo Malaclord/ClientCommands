@@ -28,10 +28,6 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 
-
-
-
-
 public class ItemComponentStringReader {
     static final DynamicCommandExceptionType UNKNOWN_COMPONENT_EXCEPTION = new DynamicCommandExceptionType((id) -> Text.stringifiedTranslatable("arguments.item.component.unknown", id));
     static final Dynamic2CommandExceptionType MALFORMED_COMPONENT_EXCEPTION = new Dynamic2CommandExceptionType((type, error) -> Text.stringifiedTranslatable("arguments.item.component.malformed", type, error));
@@ -47,7 +43,7 @@ public class ItemComponentStringReader {
     final DynamicOps<NbtElement> nbtOps;
 
     public ItemComponentStringReader(RegistryWrapper.WrapperLookup registryLookup) {
-        this.itemRegistry = registryLookup.getWrapperOrThrow(RegistryKeys.ITEM);
+        this.itemRegistry = registryLookup.getOrThrow(RegistryKeys.ITEM);
         this.nbtOps = registryLookup.getOps(NbtOps.INSTANCE);
     }
 

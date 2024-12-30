@@ -32,6 +32,7 @@ public class ClientCommandsClient implements ClientModInitializer {
             ClientPotionCommand.register(dispatcher,registryAccess);
             ClientAttributeModifierCommand.register(dispatcher,registryAccess);
             ClientComponentCommand.register(dispatcher,registryAccess);
+            WireCommand.register(dispatcher,registryAccess);
         }));
     }
 
